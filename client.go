@@ -281,7 +281,7 @@ func (f File) Close() error {
 	return nil
 }
 
-// uploadFile saves the content of File at the given filename in the OutboundPath directory
+// UploadFile creates a file containing the provided contents at the specified path
 //
 // The File's contents will always be closed
 func (c *client) UploadFile(path string, contents io.ReadCloser) error {
@@ -309,17 +309,17 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 	if err != nil {
 		return fmt.Errorf("sftp: problem creating %s: %v", filename, err)
 	}
+	defer fd.Close()
+
 	n, err := io.Copy(fd, contents)
 	if err != nil {
-		fd.Close()
 		return fmt.Errorf("sftp: problem copying (n=%d) %s: %v", n, filename, err)
 	}
-	if err := fd.Close(); err != nil {
-		return fmt.Errorf("sftp: problem closing %s: %v", filename, err)
-	}
+
 	if err := fd.Chmod(0600); err != nil {
 		return fmt.Errorf("sftp: problem chmod %s: %v", filename, err)
 	}
+
 	return nil
 }
 
