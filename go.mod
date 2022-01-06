@@ -1,4 +1,4 @@
-module github.com/moovfinancial/go-sftp
+module github.com/moov-io/go-sftp
 
 go 1.17
 
@@ -12,6 +12,7 @@ require (
 )
 
 require (
+	github.com/ProtonMail/go-crypto v0.0.0-20211221144345-a4f6767435ab // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

@@ -1,3 +1,7 @@
+// Copyright 2022 The Moov Authors
+// Use of this source code is governed by an Apache License
+// license that can be found in the LICENSE file.
+
 package go_sftp
 
 import (
@@ -13,8 +17,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/metrics/prometheus"
 	"github.com/moov-io/base/log"
+	"github.com/moov-io/go-sftp/pkg/sshx"
+
+	"github.com/go-kit/kit/metrics/prometheus"
 	"github.com/pkg/sftp"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/crypto/ssh"
@@ -127,11 +133,11 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 	conf.SetDefaults()
 
 	if cfg.HostPublicKey != "" {
-		// pubKey, err := sshx.ReadPubKey([]byte(cfg.HostPublicKey))
-		// if err != nil {
-		// 	return nil, nil, nil, fmt.Errorf("problem parsing ssh public key: %v", err)
-		// }
-		// conf.HostKeyCallback = ssh.FixedHostKey(pubKey)
+		pubKey, err := sshx.ReadPubKey([]byte(cfg.HostPublicKey))
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("problem parsing ssh public key: %v", err)
+		}
+		conf.HostKeyCallback = ssh.FixedHostKey(pubKey)
 	} else {
 		hostKeyCallbackOnce.Do(func() {
 			hostKeyCallback(logger)
