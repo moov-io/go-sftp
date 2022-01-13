@@ -76,7 +76,8 @@ func (c *mockClient) ListFiles(dir string) ([]string, error) {
 	}
 	var out []string
 	for i := range fds {
-		out = append(out, strings.TrimPrefix(fds[i].Name(), c.root))
+		fd := filepath.Join(dir, strings.TrimPrefix(fds[i].Name(), c.root))
+		out = append(out, fd)
 	}
 	return out, nil
 }
