@@ -78,6 +78,9 @@ func NewClient(logger log.Logger, cfg *ClientConfig) (Client, error) {
 	cc := &client{cfg: *cfg, logger: logger}
 
 	_, err := cc.connection()
+	if agent != nil {
+		agent.record(err)
+	}
 
 	return cc, err
 }
