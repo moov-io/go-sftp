@@ -78,8 +78,8 @@ func NewClient(logger log.Logger, cfg *ClientConfig) (Client, error) {
 	cc := &client{cfg: *cfg, logger: logger}
 
 	_, err := cc.connection()
-	if agent != nil {
-		agent.record(err)
+	if cc != nil {
+		cc.record(err)
 	}
 
 	return cc, err
@@ -172,7 +172,7 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 	for i := 0; i < 3; i++ {
 		if client == nil {
 			if i > 0 {
-				sftpConnectionRetries.With("hostname", cfg.SFTP.Hostname).Add(1)
+				sftpConnectionRetries.With("hostname", cfg.Hostname).Add(1)
 			}
 			client, err = ssh.Dial("tcp", cfg.Hostname, conf) // retry connection
 			time.Sleep(250 * time.Millisecond)
