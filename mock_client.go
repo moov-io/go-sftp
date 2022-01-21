@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"testing"
 )
 
 type mockClient struct {
@@ -18,10 +19,9 @@ type mockClient struct {
 	Err error
 }
 
-func NewMockClient() Client {
-	dir, _ := ioutil.TempDir("", "sftp-mock-client")
+func NewMockClient(t *testing.T) *mockClient {
 	return &mockClient{
-		root: dir,
+		root: t.TempDir(),
 	}
 }
 
@@ -29,8 +29,12 @@ func (c *mockClient) Ping() error {
 	return c.Err
 }
 
+func (c *mockClient) Dir() string {
+	return c.root
+}
+
 func (c *mockClient) Close() error {
-	return os.RemoveAll(c.root)
+	return c.Err
 }
 
 func (c *mockClient) Open(path string) (*File, error) {
