@@ -1,3 +1,8 @@
+## v0.3.0 (Released 2022-01-21)
+
+- feat: export MockClient
+- refactor: use testing.T's TempDir instead of ioutil
+
 ## v0.2.0 (Released 2022-01-19)
 
 - Added GitHub actions workflow
