@@ -16,7 +16,7 @@ import (
 )
 
 func TestMockClient(t *testing.T) {
-	client := sftp.NewMockClient()
+	client := sftp.NewMockClient(t)
 	require.NoError(t, client.Ping())
 	defer require.NoError(t, client.Close())
 
@@ -37,7 +37,7 @@ func TestMockClient(t *testing.T) {
 }
 
 func TestMockClient_ListAndOpenFiles(t *testing.T) {
-	client := sftp.NewMockClient()
+	client := sftp.NewMockClient(t)
 	require.NoError(t, client.Ping())
 	defer require.NoError(t, client.Close())
 
