@@ -1,3 +1,9 @@
+## v0.4.0 (Released 2022-01-25)
+
+IMPROVEMENTS
+
+- client: support reading private keys with passphrases
+
 ## v0.3.0 (Released 2022-01-21)
 
 - feat: export MockClient
