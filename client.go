@@ -47,8 +47,10 @@ type ClientConfig struct {
 	MaxConnections int
 	PacketSize     int
 
-	HostPublicKey    string
-	ClientPrivateKey string
+	HostPublicKey string
+
+	ClientPrivateKey         string
+	ClientPrivateKeyPassword string
 }
 
 type Client interface {
@@ -157,7 +159,7 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 	case cfg.Password != "":
 		conf.Auth = append(conf.Auth, ssh.Password(cfg.Password))
 	case cfg.ClientPrivateKey != "":
-		signer, err := readSigner(cfg.ClientPrivateKey)
+		signer, err := readSigner(cfg.ClientPrivateKey, cfg.ClientPrivateKeyPassword)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("sftpConnect: failed to read client private key: %v", err)
 		}
@@ -205,12 +207,19 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 	return client, pw, pr, nil
 }
 
-func readSigner(raw string) (ssh.Signer, error) {
+func readSigner(raw, passphrase string) (ssh.Signer, error) {
 	decoded, err := base64.StdEncoding.DecodeString(raw)
 	if len(decoded) > 0 && err == nil {
-		return ssh.ParsePrivateKey(decoded)
+		return readPrivateKey(decoded, passphrase)
 	}
-	return ssh.ParsePrivateKey([]byte(raw))
+	return readPrivateKey([]byte(raw), passphrase)
+}
+
+func readPrivateKey(data []byte, passphrase string) (ssh.Signer, error) {
+	if passphrase != "" {
+		return ssh.ParsePrivateKeyWithPassphrase(data, []byte(passphrase))
+	}
+	return ssh.ParsePrivateKey(data)
 }
 
 func (c *client) Ping() error {
