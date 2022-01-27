@@ -1,3 +1,13 @@
+## v0.5.0 (Released 2022-01-27)
+
+ADDITIONS
+
+- feat: make our File type fs.File compatible
+
+BUILD
+
+- Update golang.org/x/crypto commit hash to aa10faf
+
 ## v0.4.0 (Released 2022-01-25)
 
 IMPROVEMENTS
