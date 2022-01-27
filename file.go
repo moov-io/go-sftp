@@ -24,11 +24,14 @@ func (f *File) Read(b []byte) (int, error) {
 	if f == nil {
 		return 0, io.EOF
 	}
+	if f.fd == nil {
+		return f.Contents.Read(b)
+	}
 	return f.fd.Read(b)
 }
 
 func (f *File) Stat() (os.FileInfo, error) {
-	if f == nil {
+	if f == nil || f.fd == nil {
 		return nil, errors.New("nil File")
 	}
 	return f.fd.Stat()
