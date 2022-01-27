@@ -1,3 +1,9 @@
+## v0.5.1 (Released 2022-01-27)
+
+BUG FIXES
+
+- fix: bugfix for Read
+
 ## v0.5.0 (Released 2022-01-27)
 
 ADDITIONS
