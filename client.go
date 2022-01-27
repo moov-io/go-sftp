@@ -289,18 +289,6 @@ func (c *client) Delete(path string) error {
 	return nil // not found
 }
 
-type File struct {
-	Filename string
-	Contents io.ReadCloser
-}
-
-func (f File) Close() error {
-	if f.Contents != nil {
-		return f.Contents.Close()
-	}
-	return nil
-}
-
 // UploadFile creates a file containing the provided contents at the specified path
 //
 // The File's contents will always be closed
@@ -407,6 +395,7 @@ func (c *client) Open(path string) (*File, error) {
 	}
 
 	return &File{
+		fd:       fd,
 		Filename: fd.Name(),
 		Contents: ioutil.NopCloser(&buf),
 	}, nil
