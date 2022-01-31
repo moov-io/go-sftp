@@ -1,3 +1,14 @@
+## v0.5.2 (Released 2022-01-31)
+
+BUG FIXES
+
+- client: allow multiple authentication methods
+
+BUILD
+
+- Update golang.org/x/crypto commit hash to 198e437
+- Update module github.com/prometheus/client_golang to v1.12.1
+
 ## v0.5.1 (Released 2022-01-27)
 
 BUG FIXES
