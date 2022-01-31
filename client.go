@@ -155,17 +155,16 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 		//nolint:gosec
 		conf.HostKeyCallback = ssh.InsecureIgnoreHostKey() // insecure default
 	}
-	switch {
-	case cfg.Password != "":
+	// Setup various Authentication methods
+	if cfg.Password != "" {
 		conf.Auth = append(conf.Auth, ssh.Password(cfg.Password))
-	case cfg.ClientPrivateKey != "":
+	}
+	if cfg.ClientPrivateKey != "" {
 		signer, err := readSigner(cfg.ClientPrivateKey, cfg.ClientPrivateKeyPassword)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("sftpConnect: failed to read client private key: %v", err)
 		}
 		conf.Auth = append(conf.Auth, ssh.PublicKeys(signer))
-	default:
-		return nil, nil, nil, errors.New("sftpConnect: no auth method provided")
 	}
 
 	// Connect to the remote server
