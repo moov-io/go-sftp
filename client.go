@@ -346,16 +346,18 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 
 	var filenames []string
 	for i := range infos {
-		fd, err := conn.Open(filepath.Join(dir, infos[i].Name()))
+		pathToOpen := filepath.Join(dir, infos[i].Name())
+
+		fd, err := conn.Open(pathToOpen)
 		if err != nil {
-			return nil, fmt.Errorf("sftp: open %s: %v", infos[i].Name(), err)
+			return nil, fmt.Errorf("sftp: open %s: %v", pathToOpen, err)
 		}
 
 		// skip this file descriptor if it's a directory - we only reading one level deep
 		info, err := fd.Stat()
 		if err != nil {
 			fd.Close()
-			return nil, fmt.Errorf("sftp: stat %s: %v", infos[i].Name(), err)
+			return nil, fmt.Errorf("sftp: stat %s: %v", pathToOpen, err)
 		}
 		if info.IsDir() {
 			fd.Close()
