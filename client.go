@@ -360,8 +360,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	var filenames []string
 	for i := range infos {
 		pathToOpen := filepath.Join(dir, infos[i].Name())
-
-		c.logger.Logf("attempting to open %s: %#v", pathToOpen, infos[i])
+		c.logger.Logf("attempting to list %s: %#v", pathToOpen, infos[i])
 
 		fd, err := conn.Open(pathToOpen)
 		if err != nil {
@@ -378,6 +377,9 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 			fd.Close()
 			continue
 		}
+
+		// After verifying the file make sure to close it
+		fd.Close()
 
 		filenames = append(filenames, fd.Name())
 	}
