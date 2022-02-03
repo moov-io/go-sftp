@@ -131,7 +131,12 @@ func (c *client) connection() (*sftp.Client, error) {
 var (
 	hostKeyCallbackOnce sync.Once
 	hostKeyCallback     = func(logger log.Logger) {
-		logger.Warn().Logf("sftp: WARNING!!! Insecure default of skipping SFTP host key validation. Please set sftp_configs.host_public_key")
+		msg := "sftp: WARNING!!! Insecure default of skipping SFTP host key validation. Please set sftp_configs.host_public_key"
+		if logger != nil {
+			logger.Warn().Log(msg)
+		} else {
+			fmt.Println(msg)
+		}
 	}
 )
 
