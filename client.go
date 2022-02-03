@@ -98,7 +98,10 @@ func (c *client) connection() (*sftp.Client, error) {
 
 	if c.client != nil {
 		// Verify the connection works and if not drop through and reconnect
-		if _, err := c.client.Getwd(); err == nil {
+		if wd, err := c.client.Getwd(); err == nil {
+			if c.logger != nil {
+				c.logger.Logf("starting SFTP client in %s", wd)
+			}
 			return c.client, nil
 		} else {
 			// Our connection is having issues, so retry connecting
