@@ -79,9 +79,15 @@ func NewClient(logger log.Logger, cfg *ClientConfig) (Client, error) {
 
 	cc := &client{cfg: *cfg, logger: logger}
 
-	_, err := cc.connection()
+	conn, err := cc.connection()
 	if cc != nil {
 		cc.record(err)
+	}
+
+	// Print an initial startup message
+	if conn != nil && logger != nil {
+		wd, _ := conn.Getwd()
+		logger.Logf("starting SFTP client in %s", wd)
 	}
 
 	return cc, err
@@ -98,10 +104,7 @@ func (c *client) connection() (*sftp.Client, error) {
 
 	if c.client != nil {
 		// Verify the connection works and if not drop through and reconnect
-		if wd, err := c.client.Getwd(); err == nil {
-			if c.logger != nil {
-				c.logger.Logf("starting SFTP client in %s", wd)
-			}
+		if _, err := c.client.Getwd(); err == nil {
 			return c.client, nil
 		} else {
 			// Our connection is having issues, so retry connecting
