@@ -355,13 +355,17 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		return nil, fmt.Errorf("sftp: readdir %s: %v", dir, err)
 	}
 
+	c.logger.Logf("found %d files: %#v", len(infos), infos)
+
 	var filenames []string
 	for i := range infos {
 		pathToOpen := filepath.Join(dir, infos[i].Name())
 
+		c.logger.Logf("attempting to open %s: %#v", pathToOpen, infos[i])
+
 		fd, err := conn.Open(pathToOpen)
 		if err != nil {
-			return nil, fmt.Errorf("sftp: open %s: %v", pathToOpen, err)
+			return nil, fmt.Errorf("sftp: list open %s: %v", pathToOpen, err)
 		}
 
 		// skip this file descriptor if it's a directory - we only reading one level deep
