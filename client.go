@@ -98,7 +98,10 @@ func (c *client) connection() (*sftp.Client, error) {
 
 	if c.client != nil {
 		// Verify the connection works and if not drop through and reconnect
-		if _, err := c.client.Getwd(); err == nil {
+		if wd, err := c.client.Getwd(); err == nil {
+			if c.logger != nil {
+				c.logger.Logf("starting SFTP client in %s", wd)
+			}
 			return c.client, nil
 		} else {
 			// Our connection is having issues, so retry connecting
@@ -131,7 +134,12 @@ func (c *client) connection() (*sftp.Client, error) {
 var (
 	hostKeyCallbackOnce sync.Once
 	hostKeyCallback     = func(logger log.Logger) {
-		logger.Warn().Logf("sftp: WARNING!!! Insecure default of skipping SFTP host key validation. Please set sftp_configs.host_public_key")
+		msg := "sftp: WARNING!!! Insecure default of skipping SFTP host key validation. Please set sftp_configs.host_public_key"
+		if logger != nil {
+			logger.Warn().Log(msg)
+		} else {
+			fmt.Println(msg)
+		}
 	}
 )
 
