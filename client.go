@@ -346,7 +346,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 
 	var filenames []string
 	for i := range infos {
-		pathToOpen := filepath.Join(dir, infos[i].Name())
+		pathToOpen := conn.Join(dir, infos[i].Name())
 
 		fd, err := conn.Open(pathToOpen)
 		if err != nil {
