@@ -4,6 +4,12 @@ BREAKING CHANGES
 
 - feat: our File type no longer implements the fs.File interface
 
+IMPROVEMENTS
+
+- fix: only log on client startup, not connection init
+- feat: add enhanced debugging statements
+- fix: close file descriptor after list
+
 ## v0.5.2 (Released 2022-01-31)
 
 BUG FIXES
