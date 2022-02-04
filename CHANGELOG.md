@@ -1,3 +1,9 @@
+## v0.6.0 (Released 2022-02-04)
+
+BREAKING CHANGES
+
+- feat: our File type no longer implements the fs.File interface
+
 ## v0.5.2 (Released 2022-01-31)
 
 BUG FIXES

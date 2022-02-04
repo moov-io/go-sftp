@@ -413,7 +413,6 @@ func (c *client) Open(path string) (*File, error) {
 	}
 
 	return &File{
-		fd:       fd,
 		Filename: fd.Name(),
 		Contents: ioutil.NopCloser(&buf),
 	}, nil

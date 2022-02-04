@@ -5,46 +5,20 @@
 package go_sftp
 
 import (
-	"errors"
 	"io"
-	"io/fs"
-	"os"
-
-	"github.com/pkg/sftp"
 )
 
 type File struct {
-	fd *sftp.File
-
 	Filename string
 	Contents io.ReadCloser
 }
 
-func (f *File) Read(b []byte) (int, error) {
-	if f == nil {
-		return 0, io.EOF
-	}
-	if f.fd == nil {
-		return f.Contents.Read(b)
-	}
-	return f.fd.Read(b)
-}
-
-func (f *File) Stat() (os.FileInfo, error) {
-	if f == nil || f.fd == nil {
-		return nil, errors.New("nil File")
-	}
-	return f.fd.Stat()
-}
-
 func (f *File) Close() error {
-	if f.Contents != nil {
-		f.Contents.Close()
+	if f == nil {
+		return nil
 	}
-	if f.fd != nil {
-		return f.fd.Close()
+	if f.Contents != nil {
+		return f.Contents.Close()
 	}
 	return nil
 }
-
-var _ fs.File = (&File{})
