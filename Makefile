@@ -40,6 +40,11 @@ else
 	@rm -rf ./bin/ cover.out coverage.txt misspell* staticcheck*
 endif
 
+setup:
+	docker-compose up -d --force-recreate --remove-orphans
+teardown:
+	docker-compose down --remove-orphans
+
 # For open source projects
 
 # From https://github.com/genuinetools/img
