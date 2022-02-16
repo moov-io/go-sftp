@@ -313,7 +313,7 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 		return err
 	}
 
-	dir, filename := filepath.Split(path)
+	dir, _ := filepath.Split(path)
 
 	// Create the directory if it doesn't exist
 	info, err := conn.Stat(dir)
@@ -325,17 +325,17 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 
 	fd, err := conn.Create(path)
 	if err != nil {
-		return fmt.Errorf("sftp: problem creating %s: %v", filename, err)
+		return fmt.Errorf("sftp: problem creating %s: %v", path, err)
 	}
 	defer fd.Close()
 
 	n, err := io.Copy(fd, contents)
 	if err != nil {
-		return fmt.Errorf("sftp: problem copying (n=%d) %s: %v", n, filename, err)
+		return fmt.Errorf("sftp: problem copying (n=%d) %s: %v", n, path, err)
 	}
 
 	if err := fd.Chmod(0600); err != nil {
-		return fmt.Errorf("sftp: problem chmod %s: %v", filename, err)
+		return fmt.Errorf("sftp: problem chmod %s: %v", path, err)
 	}
 
 	return nil
