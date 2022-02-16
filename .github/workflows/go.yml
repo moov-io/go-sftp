@@ -25,6 +25,8 @@ jobs:
 
     - name: Setup
       run: make setup
+    - name: Fix sftp dir permission
+      run: chmod o+rwx ./testdata/inbox
 
     - name: Check
       run: make check
