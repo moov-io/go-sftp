@@ -100,7 +100,7 @@ func TestClient_New(t *testing.T) {
 		require.NoError(t, err)
 
 		// upload file
-		fileName := fmt.Sprintf("/inbox/%d.txt", time.Now().Unix())
+		fileName := fmt.Sprintf("/upload/%d.txt", time.Now().Unix())
 		err = client.UploadFile(fileName, io.NopCloser(bytes.NewBufferString("random")))
 		require.NoError(t, err)
 
