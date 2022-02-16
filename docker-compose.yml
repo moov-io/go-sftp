@@ -1,0 +1,11 @@
+version: '3.7'
+services:
+  sftp:
+    image: atmoz/sftp:latest
+    ports:
+      - "2222:22"
+    volumes:
+      - "./testdata/outbox:/home/demo/outbox"
+      - "./testdata/inbox:/home/demo/inbox"
+    command:
+      - "demo:password:::inbox,outbox"

@@ -361,30 +361,12 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	c.logger.Logf("found %d files: %#v", len(infos), infos)
 
 	var filenames []string
-	for i := range infos {
-		pathToOpen := filepath.Join(dir, infos[i].Name())
-		c.logger.Logf("attempting to list %s: %#v", pathToOpen, infos[i])
-
-		fd, err := conn.Open(pathToOpen)
-		if err != nil {
-			return nil, fmt.Errorf("sftp: list open %s: %v", pathToOpen, err)
-		}
-
-		// skip this file descriptor if it's a directory - we only reading one level deep
-		info, err := fd.Stat()
-		if err != nil {
-			fd.Close()
-			return nil, fmt.Errorf("sftp: stat %s: %v", pathToOpen, err)
-		}
+	for _, info := range infos {
 		if info.IsDir() {
-			fd.Close()
 			continue
 		}
 
-		// After verifying the file make sure to close it
-		fd.Close()
-
-		filenames = append(filenames, fd.Name())
+		filenames = append(filenames, filepath.Join(dir, info.Name()))
 	}
 	return filenames, nil
 }
@@ -400,7 +382,7 @@ func (c *client) Open(path string) (*File, error) {
 
 	fd, err := conn.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("sftp: open %s: %v", fd.Name(), err)
+		return nil, fmt.Errorf("sftp: open %s: %v", path, err)
 	}
 
 	// download the remote file to our local directory
