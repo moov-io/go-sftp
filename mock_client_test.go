@@ -5,6 +5,7 @@
 package go_sftp_test
 
 import (
+	"errors"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -29,6 +30,13 @@ func TestMockClient(t *testing.T) {
 	body := ioutil.NopCloser(strings.NewReader("contents"))
 	err = client.UploadFile("/exists.txt", body)
 	require.NoError(t, err)
+
+	client.Err = errors.New("bad error")
+	err = client.UploadFile("/exists.txt", body)
+	require.Error(t, err)
+
+	// reset mock client err
+	client.Err = nil
 
 	paths, err := client.ListFiles("/")
 	require.NoError(t, err)

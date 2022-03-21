@@ -57,6 +57,10 @@ func (c *MockClient) Delete(path string) error {
 }
 
 func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
+	if c.Err != nil {
+		return c.Err
+	}
+
 	dir, _ := filepath.Split(path)
 	if err := os.MkdirAll(filepath.Join(c.root, dir), 0777); err != nil {
 		return err
