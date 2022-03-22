@@ -1,3 +1,9 @@
+## v0.6.1 (Released 2022-02-16)
+
+IMPROVEMENTS
+
+- feat: list files without opening
+
 ## v0.6.0 (Released 2022-02-04)
 
 BREAKING CHANGES
