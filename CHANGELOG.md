@@ -1,3 +1,9 @@
+## v0.6.2 (Released 2022-03-22)
+
+IMPROVEMENTS
+
+- fix: return err if set on mock client file upload
+
 ## v0.6.1 (Released 2022-02-16)
 
 IMPROVEMENTS
