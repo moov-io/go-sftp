@@ -46,6 +46,7 @@ func TestClient_New(t *testing.T) {
 
 		file, err := client.Open("/outbox/one.txt")
 		require.NoError(t, err)
+		require.Greater(t, file.ModTime.Unix(), int64(1e7)) // valid unix time
 
 		content, err := ioutil.ReadAll(file.Contents)
 		require.NoError(t, err)
