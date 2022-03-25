@@ -1,3 +1,13 @@
+## v0.7.0 (Released 2022-03-25)
+
+ADDITIONS
+
+- feat: include ModTime on every File instance
+
+BUILD
+
+- fix(deps): update golang.org/x/crypto digest to 2c7772b
+
 ## v0.6.2 (Released 2022-03-22)
 
 IMPROVEMENTS
