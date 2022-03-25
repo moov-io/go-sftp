@@ -6,11 +6,16 @@ package go_sftp
 
 import (
 	"io"
+	"time"
 )
 
 type File struct {
 	Filename string
 	Contents io.ReadCloser
+
+	// ModTime is a timestamp of when the last modification occurred
+	// to this file. The default will be the current time.
+	ModTime time.Time
 }
 
 func (f *File) Close() error {

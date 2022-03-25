@@ -397,8 +397,14 @@ func (c *client) Open(path string) (*File, error) {
 		fd.Close()
 	}
 
+	modTime := time.Now().In(time.UTC)
+	if stat, _ := fd.Stat(); stat != nil {
+		modTime = stat.ModTime()
+	}
+
 	return &File{
 		Filename: fd.Name(),
 		Contents: ioutil.NopCloser(&buf),
+		ModTime:  modTime,
 	}, nil
 }
