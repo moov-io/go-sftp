@@ -49,8 +49,9 @@ type ClientConfig struct {
 
 	HostPublicKey string
 
+	// ClientPrivateKey must be a base64 encoded string
 	ClientPrivateKey         string
-	ClientPrivateKeyPassword string
+	ClientPrivateKeyPassword string // not base64 encoded
 }
 
 type Client interface {

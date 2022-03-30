@@ -14,7 +14,7 @@ type File struct {
 	Contents io.ReadCloser
 
 	// ModTime is a timestamp of when the last modification occurred
-	// to this file. The default will be the current time.
+	// to this file. The default will be the current UTC time.
 	ModTime time.Time
 }
 
