@@ -52,6 +52,8 @@ type ClientConfig struct {
 	// ClientPrivateKey must be a base64 encoded string
 	ClientPrivateKey         string
 	ClientPrivateKeyPassword string // not base64 encoded
+
+	SkipChmodAfterUpload bool
 }
 
 type Client interface {
@@ -338,8 +340,10 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 		return fmt.Errorf("sftp: problem copying (n=%d) %s: %v", n, path, err)
 	}
 
-	if err := fd.Chmod(0600); err != nil {
-		return fmt.Errorf("sftp: problem chmod %s: %v", path, err)
+	if !c.cfg.SkipChmodAfterUpload {
+		if err = fd.Chmod(0600); err != nil {
+			return fmt.Errorf("sftp: problem chmod %s: %v", path, err)
+		}
 	}
 
 	return nil
