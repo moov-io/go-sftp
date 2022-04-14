@@ -1,3 +1,9 @@
+## v0.8.0 (Released 2022-04-14)
+
+ADDITIONS
+
+- feat: new config flag to skip chmod after uploading a file
+
 ## v0.7.0 (Released 2022-03-25)
 
 ADDITIONS
