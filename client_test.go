@@ -123,4 +123,33 @@ func TestClient_New(t *testing.T) {
 		require.NoError(t, file.Close())
 		require.NoError(t, client.Close())
 	})
+
+	t.Run("Skip chmod after upload", func(t *testing.T) {
+		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
+			Hostname:             "localhost:2222",
+			Username:             "demo",
+			Password:             "password",
+			Timeout:              5 * time.Second,
+			MaxConnections:       1,
+			PacketSize:           32000,
+			SkipChmodAfterUpload: true,
+		})
+		require.NoError(t, err)
+
+		// upload file
+		fileName := fmt.Sprintf("/upload/%d.txt", time.Now().Unix())
+		err = client.UploadFile(fileName, io.NopCloser(bytes.NewBufferString("random")))
+		require.NoError(t, err)
+
+		// test uploaded file content
+		file, err := client.Open(fileName)
+		require.NoError(t, err)
+		content, err := ioutil.ReadAll(file.Contents)
+		require.NoError(t, err)
+		require.Equal(t, "random", string(content))
+
+		// delete file
+		err = client.Delete(fileName)
+		require.NoError(t, err)
+	})
 }
