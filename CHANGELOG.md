@@ -1,3 +1,17 @@
+## v0.8.2 (Released 2022-05-12)
+
+BUILD
+
+- build: require minimum test coverage again
+- build: update ProtonMail/go-crypto, moov-io/base, and golang.org/x/crypto
+- fix: tweak for staticcheck
+
+## v0.8.1 (Released 2022-05-02)
+
+BUILD
+
+- fix(deps): update golang.org/x/crypto digest to eb4f295
+
 ## v0.8.0 (Released 2022-04-14)
 
 ADDITIONS
