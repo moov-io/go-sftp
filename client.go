@@ -83,9 +83,7 @@ func NewClient(logger log.Logger, cfg *ClientConfig) (Client, error) {
 	cc := &client{cfg: *cfg, logger: logger}
 
 	conn, err := cc.connection()
-	if cc != nil {
-		cc.record(err)
-	}
+	cc.record(err) // track up metric for remote server
 
 	// Print an initial startup message
 	if conn != nil && logger != nil {
