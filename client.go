@@ -23,6 +23,7 @@ import (
 	"github.com/go-kit/kit/metrics/prometheus"
 	"github.com/pkg/sftp"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
+
 	"golang.org/x/crypto/ssh"
 )
 
@@ -361,8 +362,6 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		return nil, fmt.Errorf("sftp: readdir %s: %v", dir, err)
 	}
 
-	c.logger.Logf("found %d files: %#v", len(infos), infos)
-
 	var filenames []string
 	for _, info := range infos {
 		if info.IsDir() {
@@ -371,6 +370,9 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 
 		filenames = append(filenames, filepath.Join(dir, info.Name()))
 	}
+
+	c.logger.Logf("found %d files: %s", len(infos), strings.Join(filenames, ", "))
+
 	return filenames, nil
 }
 
