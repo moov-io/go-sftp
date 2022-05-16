@@ -1,3 +1,13 @@
+## v0.8.3 (Released 2022-05-16)
+
+IMPROVEMENTS
+
+- fix: log names of files found in ListFiles instead of `*FileInfo`
+
+BUILD
+
+- fix(deps): update golang.org/x/crypto digest to 403b017
+
 ## v0.8.2 (Released 2022-05-12)
 
 BUILD
