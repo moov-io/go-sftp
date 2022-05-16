@@ -371,7 +371,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		filenames = append(filenames, filepath.Join(dir, info.Name()))
 	}
 
-	c.logger.Logf("found %d files: %s", len(infos), fileInfoString(filenames))
+	c.logger.Logf("found %d files: %s", len(infos), strings.Join(filenames, ", "))
 
 	return filenames, nil
 }
@@ -412,15 +412,4 @@ func (c *client) Open(path string) (*File, error) {
 		Contents: ioutil.NopCloser(&buf),
 		ModTime:  modTime,
 	}, nil
-}
-
-func fileInfoString(infos []string) string {
-	result := ""
-	for i, info := range infos {
-		if i > 0 {
-			result += ", "
-		}
-		result += info
-	}
-	return result
 }
