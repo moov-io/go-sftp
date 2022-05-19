@@ -1,3 +1,10 @@
+## v0.8.4 (Released 2022-05-19)
+
+BUILD
+
+- fix(deps): update github.com/protonmail/go-crypto digest to 88bb529
+- fix(deps): update golang.org/x/crypto digest to 6f7dac9
+
 ## v0.8.3 (Released 2022-05-16)
 
 IMPROVEMENTS
