@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sort"
 	"testing"
 	"time"
 
@@ -68,8 +69,9 @@ func TestClient_New(t *testing.T) {
 		require.NoError(t, err)
 
 		files, err := client.ListFiles("/outbox")
-
 		require.NoError(t, err)
+
+		sort.Strings(files)
 		require.Equal(t, []string{"/outbox/one.txt", "/outbox/two.txt"}, files)
 
 		require.NoError(t, client.Close())
