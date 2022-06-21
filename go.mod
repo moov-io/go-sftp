@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20220517143526-88bb52951d5b
 	github.com/go-kit/kit v0.12.0
-	github.com/moov-io/base v0.30.0
+	github.com/moov-io/base v0.31.1
 	github.com/pkg/sftp v1.13.4
 	github.com/prometheus/client_golang v1.12.2
 	github.com/stretchr/testify v1.7.2
@@ -25,7 +25,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/rickar/cal/v2 v2.1.4 // indirect
+	github.com/rickar/cal/v2 v2.1.5 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
