@@ -8,7 +8,7 @@ require (
 	github.com/moov-io/base v0.31.1
 	github.com/pkg/sftp v1.13.5
 	github.com/prometheus/client_golang v1.12.2
-	github.com/stretchr/testify v1.7.5
+	github.com/stretchr/testify v1.8.0
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 )
 
