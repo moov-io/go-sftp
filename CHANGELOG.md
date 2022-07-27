@@ -1,3 +1,11 @@
+## v0.8.5 (Released 2022-07-27)
+
+- fix(deps): update golang.org/x/crypto digest to 630584e
+- fix(deps): update module github.com/moov-io/base to v0.33.0
+- fix(deps): update module github.com/stretchr/testify to v1.8.0
+- fix(deps): update module github.com/pkg/sftp to v1.13.5
+- fix(deps): update github.com/protonmail/go-crypto digest to e85cedf
+
 ## v0.8.4 (Released 2022-05-19)
 
 BUILD
