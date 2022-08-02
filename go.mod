@@ -1,6 +1,6 @@
 module github.com/moov-io/go-sftp
 
-go 1.18
+go 1.19
 
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20220730123233-d6ffb7692adf
