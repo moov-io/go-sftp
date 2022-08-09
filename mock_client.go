@@ -6,7 +6,6 @@ package go_sftp
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,9 +65,9 @@ func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
 		return err
 	}
 
-	bs, _ := ioutil.ReadAll(contents)
+	bs, _ := io.ReadAll(contents)
 
-	return ioutil.WriteFile(filepath.Join(c.root, path), bs, 0600)
+	return os.WriteFile(filepath.Join(c.root, path), bs, 0600)
 }
 
 func (c *MockClient) ListFiles(dir string) ([]string, error) {
@@ -78,7 +77,7 @@ func (c *MockClient) ListFiles(dir string) ([]string, error) {
 
 	os.MkdirAll(filepath.Join(c.root, dir), 0777)
 
-	fds, err := ioutil.ReadDir(filepath.Join(c.root, dir))
+	fds, err := os.ReadDir(filepath.Join(c.root, dir))
 	if err != nil {
 		return nil, err
 	}

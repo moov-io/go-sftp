@@ -7,7 +7,6 @@ package go_sftp_test
 import (
 	"errors"
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -27,7 +26,7 @@ func TestMockClient(t *testing.T) {
 	err = client.Delete("/missing.txt")
 	require.Error(t, err)
 
-	body := ioutil.NopCloser(strings.NewReader("contents"))
+	body := io.NopCloser(strings.NewReader("contents"))
 	err = client.UploadFile("/exists.txt", body)
 	require.NoError(t, err)
 
@@ -49,8 +48,8 @@ func TestMockClient_ListAndOpenFiles(t *testing.T) {
 	require.NoError(t, client.Ping())
 	defer require.NoError(t, client.Close())
 
-	require.NoError(t, client.UploadFile("/path/f1.txt", ioutil.NopCloser(strings.NewReader("foo"))))
-	require.NoError(t, client.UploadFile("/path/f2.txt", ioutil.NopCloser(strings.NewReader("foo"))))
+	require.NoError(t, client.UploadFile("/path/f1.txt", io.NopCloser(strings.NewReader("foo"))))
+	require.NoError(t, client.UploadFile("/path/f2.txt", io.NopCloser(strings.NewReader("foo"))))
 
 	foundFiles, err := client.ListFiles("/path/")
 	require.NoError(t, err)

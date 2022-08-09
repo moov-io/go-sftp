@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -409,7 +408,7 @@ func (c *client) Open(path string) (*File, error) {
 
 	return &File{
 		Filename: fd.Name(),
-		Contents: ioutil.NopCloser(&buf),
+		Contents: io.NopCloser(&buf),
 		ModTime:  modTime,
 	}, nil
 }

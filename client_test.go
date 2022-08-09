@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sort"
 	"testing"
 	"time"
@@ -49,7 +48,7 @@ func TestClient_New(t *testing.T) {
 		require.NoError(t, err)
 		require.Greater(t, file.ModTime.Unix(), int64(1e7)) // valid unix time
 
-		content, err := ioutil.ReadAll(file.Contents)
+		content, err := io.ReadAll(file.Contents)
 		require.NoError(t, err)
 		require.Equal(t, "one\n", string(content))
 
@@ -110,7 +109,7 @@ func TestClient_New(t *testing.T) {
 		// test uploaded file content
 		file, err := client.Open(fileName)
 		require.NoError(t, err)
-		content, err := ioutil.ReadAll(file.Contents)
+		content, err := io.ReadAll(file.Contents)
 		require.NoError(t, err)
 		require.Equal(t, "random", string(content))
 
@@ -146,7 +145,7 @@ func TestClient_New(t *testing.T) {
 		// test uploaded file content
 		file, err := client.Open(fileName)
 		require.NoError(t, err)
-		content, err := ioutil.ReadAll(file.Contents)
+		content, err := io.ReadAll(file.Contents)
 		require.NoError(t, err)
 		require.Equal(t, "random", string(content))
 
