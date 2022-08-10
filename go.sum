@@ -118,6 +118,8 @@ github.com/ProtonMail/go-crypto v0.0.0-20220714114130-e85cedf506cd h1:sOpOKHLKfQ
 github.com/ProtonMail/go-crypto v0.0.0-20220714114130-e85cedf506cd/go.mod h1:z4/9nQmJSSwwds7ejkxaJwO37dru3geImFUdJlaLzQo=
 github.com/ProtonMail/go-crypto v0.0.0-20220730123233-d6ffb7692adf h1:aFFtnGZ6/2Qlvx80yxA2fFSYDQWTFjtKozQKB36A3/A=
 github.com/ProtonMail/go-crypto v0.0.0-20220730123233-d6ffb7692adf/go.mod h1:UBYPn8k0D56RtnR8RFQMjmh4KrZzWJ5o7Z9SYjossQ8=
+github.com/ProtonMail/go-crypto v0.0.0-20220810064516-de89276ce0f3 h1:JBPdE3yq6D8k8UxTzyCN2uhpHfGKsJEurKLHLU6YBdM=
+github.com/ProtonMail/go-crypto v0.0.0-20220810064516-de89276ce0f3/go.mod h1:UBYPn8k0D56RtnR8RFQMjmh4KrZzWJ5o7Z9SYjossQ8=
 github.com/PuerkitoBio/purell v1.0.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20160726150825-5bd2802263f2/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
