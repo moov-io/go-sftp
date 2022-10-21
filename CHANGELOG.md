@@ -1,4 +1,15 @@
+## v0.8.6 (Released 2022-10-21)
+
+BUILD
+
+- fix(deps): update module github.com/moov-io/base to v0.36.0
+- fix(deps): update module github.com/prometheus/client_golang to v1.13.0
+- fix(deps): update github.com/protonmail/go-crypto digest to c6815a8
+- fix(deps): update module golang.org/x/crypto to v0.1.0
+
 ## v0.8.5 (Released 2022-07-27)
+
+BUILD
 
 - fix(deps): update golang.org/x/crypto digest to 630584e
 - fix(deps): update module github.com/moov-io/base to v0.33.0
