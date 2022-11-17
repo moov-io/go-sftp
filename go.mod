@@ -9,7 +9,7 @@ require (
 	github.com/pkg/sftp v1.13.5
 	github.com/prometheus/client_golang v1.14.0
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/crypto v0.2.0
+	golang.org/x/crypto v0.3.0
 )
 
 require (
