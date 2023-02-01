@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,6 +66,7 @@ type Client interface {
 	UploadFile(path string, contents io.ReadCloser) error
 
 	ListFiles(dir string) ([]string, error)
+	Walk(dir string, fn fs.WalkDirFunc) error
 }
 
 type client struct {
@@ -411,4 +413,26 @@ func (c *client) Open(path string) (*File, error) {
 		Contents: io.NopCloser(&buf),
 		ModTime:  modTime,
 	}, nil
+}
+
+func (c *client) Walk(dir string, fn fs.WalkDirFunc) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	w := c.client.Walk(dir)
+	if w == nil {
+		return errors.New("nil *fs.Walker")
+	}
+	// Pass the callback to each file found
+	for w.Step() {
+		err := fn(w.Path(), fs.FileInfoToDirEntry(w.Stat()), w.Err())
+		if err != nil {
+			if err == fs.SkipDir {
+				w.SkipDir()
+			} else {
+				return err
+			}
+		}
+	}
+	return w.Err()
 }

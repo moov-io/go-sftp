@@ -6,6 +6,7 @@ package go_sftp
 
 import (
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,4 +88,18 @@ func (c *MockClient) ListFiles(dir string) ([]string, error) {
 		out = append(out, fd)
 	}
 	return out, nil
+}
+
+func (c *MockClient) Walk(dir string, fn fs.WalkDirFunc) error {
+	if c.Err != nil {
+		return c.Err
+	}
+
+	d, err := filepath.Abs(filepath.Join(c.root, dir))
+	if err != nil {
+		return err
+	}
+	os.MkdirAll(d, 0777)
+
+	return fs.WalkDir(os.DirFS(d), ".", fn)
 }

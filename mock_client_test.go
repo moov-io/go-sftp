@@ -7,6 +7,7 @@ package go_sftp_test
 import (
 	"errors"
 	"io"
+	"io/fs"
 	"strings"
 	"testing"
 
@@ -64,4 +65,16 @@ func TestMockClient_ListAndOpenFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "foo", string(contents))
 	}
+
+	// Walk the directory and list files
+	var walkedFiles []string
+	err = client.Walk("/path/", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		walkedFiles = append(walkedFiles, path)
+		return nil
+	})
+	require.NoError(t, err)
+	require.Contains(t, walkedFiles, "f1.txt", "f2.txt")
 }
