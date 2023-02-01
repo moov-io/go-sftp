@@ -19,6 +19,8 @@ type MockClient struct {
 	Err error
 }
 
+var _ Client = (&MockClient{})
+
 func NewMockClient(t *testing.T) *MockClient {
 	return &MockClient{
 		root: t.TempDir(),
