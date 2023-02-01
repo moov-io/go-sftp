@@ -64,6 +64,17 @@ func TestMockClient_ListAndOpenFiles(t *testing.T) {
 		contents, err := io.ReadAll(found.Contents)
 		require.NoError(t, err)
 		require.Equal(t, "foo", string(contents))
+		require.NoError(t, found.Close())
+
+		// Consume the file with Reader
+		found, err = client.Reader(file)
+		require.NoError(t, err)
+		require.NotNil(t, found)
+
+		contents, err = io.ReadAll(found.Contents)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(contents))
+		require.NoError(t, found.Close())
 	}
 
 	// Walk the directory and list files

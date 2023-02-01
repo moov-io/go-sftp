@@ -39,6 +39,10 @@ func (c *MockClient) Close() error {
 	return c.Err
 }
 
+func (c *MockClient) Reader(path string) (*File, error) {
+	return c.Open(path)
+}
+
 func (c *MockClient) Open(path string) (*File, error) {
 	if c.Err != nil {
 		return nil, c.Err
