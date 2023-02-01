@@ -349,6 +349,7 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 	return nil
 }
 
+// ListFiles will return the filepaths of files within dir
 func (c *client) ListFiles(dir string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -377,6 +378,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	return filenames, nil
 }
 
+// Open will return the contents at path
 func (c *client) Open(path string) (*File, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -415,6 +417,9 @@ func (c *client) Open(path string) (*File, error) {
 	}, nil
 }
 
+// Walk will traverse dir and call fs.WalkDirFunc on each entry.
+//
+// Follow the docs for fs.WalkDirFunc for details on traversal. Walk accepts fs.SkipDir to not process directories.
 func (c *client) Walk(dir string, fn fs.WalkDirFunc) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
