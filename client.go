@@ -62,6 +62,8 @@ type Client interface {
 	Close() error
 
 	Open(path string) (*File, error)
+	Reader(path string) (*File, error)
+
 	Delete(path string) error
 	UploadFile(path string, contents io.ReadCloser) error
 
@@ -378,8 +380,12 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	return filenames, nil
 }
 
-// Open will return the contents at path
-func (c *client) Open(path string) (*File, error) {
+// Reader will open the file at path and provide a reader to access its contents.
+// Callers need to close the returned Contents
+//
+// Callers should be aware that network errors while reading can occur since contents
+// are streamed from the SFTP server.
+func (c *client) Reader(path string) (*File, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -393,18 +399,6 @@ func (c *client) Open(path string) (*File, error) {
 		return nil, fmt.Errorf("sftp: open %s: %v", path, err)
 	}
 
-	// download the remote file to our local directory
-	var buf bytes.Buffer
-	if n, err := io.Copy(&buf, fd); err != nil {
-		fd.Close()
-		if err != nil && !strings.Contains(err.Error(), sftp.ErrInternalInconsistency.Error()) {
-			return nil, fmt.Errorf("sftp: read (n=%d) %s: %v", n, fd.Name(), err)
-		}
-		return nil, fmt.Errorf("sftp: read (n=%d) on %s: %v", n, fd.Name(), err)
-	} else {
-		fd.Close()
-	}
-
 	modTime := time.Now().In(time.UTC)
 	if stat, _ := fd.Stat(); stat != nil {
 		modTime = stat.ModTime()
@@ -412,8 +406,35 @@ func (c *client) Open(path string) (*File, error) {
 
 	return &File{
 		Filename: fd.Name(),
-		Contents: io.NopCloser(&buf),
+		Contents: fd,
 		ModTime:  modTime,
+	}, nil
+}
+
+// Open will return the contents at path and consume the entire file contents.
+// WARNING: This method can use a lot of memory by consuming the entire file into memory.
+func (c *client) Open(path string) (*File, error) {
+	r, err := c.Reader(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// read the entire remote file
+	var buf bytes.Buffer
+	if n, err := io.Copy(&buf, r.Contents); err != nil {
+		r.Close()
+		if err != nil && !strings.Contains(err.Error(), sftp.ErrInternalInconsistency.Error()) {
+			return nil, fmt.Errorf("sftp: read (n=%d) %s: %v", n, r.Filename, err)
+		}
+		return nil, fmt.Errorf("sftp: read (n=%d) on %s: %v", n, r.Filename, err)
+	} else {
+		r.Close()
+	}
+
+	return &File{
+		Filename: r.Filename,
+		Contents: io.NopCloser(&buf),
+		ModTime:  r.ModTime,
 	}, nil
 }
 

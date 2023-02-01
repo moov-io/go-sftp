@@ -57,6 +57,29 @@ func TestClient_New(t *testing.T) {
 		require.NoError(t, client.Close())
 	})
 
+	t.Run("Open with Reader and consume file", func(t *testing.T) {
+		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
+			Hostname:       "localhost:2222",
+			Username:       "demo",
+			Password:       "password",
+			Timeout:        5 * time.Second,
+			MaxConnections: 1,
+			PacketSize:     32000,
+		})
+		require.NoError(t, err)
+
+		file, err := client.Reader("/outbox/one.txt")
+		require.NoError(t, err)
+		require.Greater(t, file.ModTime.Unix(), int64(1e7)) // valid unix time
+
+		content, err := io.ReadAll(file.Contents)
+		require.NoError(t, err)
+		require.Equal(t, "one\n", string(content))
+
+		require.NoError(t, file.Close())
+		require.NoError(t, client.Close())
+	})
+
 	t.Run("ListFiles", func(t *testing.T) {
 		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
 			Hostname:       "localhost:2222",
