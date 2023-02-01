@@ -1,3 +1,18 @@
+## v0.9.0 (Released 2023-02-01)
+
+ADDITIONS
+
+- feat: add Reader() method to clients for streaming contents
+- feat: add Walk function for traversing a directory
+
+BUILD
+
+- fix(deps): update github.com/protonmail/go-crypto digest to d1d05f4
+- fix(deps): update module github.com/moov-io/base to v0.39.0
+- fix(deps): update module github.com/prometheus/client_golang to v1.14.0
+- fix(deps): update module github.com/stretchr/testify to v1.8.1
+- fix(deps): update module golang.org/x/crypto to v0.5.0
+
 ## v0.8.6 (Released 2022-10-21)
 
 BUILD
