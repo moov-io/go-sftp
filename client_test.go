@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
 	"sort"
 	"testing"
 	"time"
@@ -72,6 +73,31 @@ func TestClient_New(t *testing.T) {
 
 		sort.Strings(files)
 		require.Equal(t, []string{"/outbox/one.txt", "/outbox/two.txt"}, files)
+
+		require.NoError(t, client.Close())
+	})
+
+	t.Run("Walk directory", func(t *testing.T) {
+		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
+			Hostname:       "localhost:2222",
+			Username:       "demo",
+			Password:       "password",
+			Timeout:        5 * time.Second,
+			MaxConnections: 1,
+			PacketSize:     32000,
+		})
+		require.NoError(t, err)
+
+		var walkedFiles []string
+		err = client.Walk("/outbox", func(path string, info fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			walkedFiles = append(walkedFiles, path)
+			return nil
+		})
+		require.NoError(t, err)
+		require.Contains(t, walkedFiles, "/outbox/one.txt", "/outbox/two.txt")
 
 		require.NoError(t, client.Close())
 	})

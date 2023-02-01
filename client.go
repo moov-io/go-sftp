@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,6 +66,7 @@ type Client interface {
 	UploadFile(path string, contents io.ReadCloser) error
 
 	ListFiles(dir string) ([]string, error)
+	Walk(dir string, fn fs.WalkDirFunc) error
 }
 
 type client struct {
@@ -347,6 +349,7 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 	return nil
 }
 
+// ListFiles will return the filepaths of files within dir
 func (c *client) ListFiles(dir string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -375,6 +378,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	return filenames, nil
 }
 
+// Open will return the contents at path
 func (c *client) Open(path string) (*File, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -411,4 +415,29 @@ func (c *client) Open(path string) (*File, error) {
 		Contents: io.NopCloser(&buf),
 		ModTime:  modTime,
 	}, nil
+}
+
+// Walk will traverse dir and call fs.WalkDirFunc on each entry.
+//
+// Follow the docs for fs.WalkDirFunc for details on traversal. Walk accepts fs.SkipDir to not process directories.
+func (c *client) Walk(dir string, fn fs.WalkDirFunc) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	w := c.client.Walk(dir)
+	if w == nil {
+		return errors.New("nil *fs.Walker")
+	}
+	// Pass the callback to each file found
+	for w.Step() {
+		err := fn(w.Path(), fs.FileInfoToDirEntry(w.Stat()), w.Err())
+		if err != nil {
+			if err == fs.SkipDir {
+				w.SkipDir()
+			} else {
+				return err
+			}
+		}
+	}
+	return w.Err()
 }
