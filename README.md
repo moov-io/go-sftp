@@ -32,10 +32,13 @@ type Client interface {
 	Close() error
 
 	Open(path string) (*File, error)
+	Reader(path string) (*File, error)
+
 	Delete(path string) error
 	UploadFile(path string, contents io.ReadCloser) error
 
 	ListFiles(dir string) ([]string, error)
+	Walk(dir string, fn fs.WalkDirFunc) error
 }
 ```
 
