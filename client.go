@@ -333,7 +333,7 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 
 	fd, err := conn.Create(path)
 	if err != nil {
-		return fmt.Errorf("sftp: problem creating %s: %v", path, err)
+		return fmt.Errorf("sftp: problem creating %s: %w", path, err)
 	}
 	defer fd.Close()
 
