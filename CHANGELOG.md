@@ -1,3 +1,15 @@
+## v0.9.1 (Released 2023-03-17)
+
+IMPROVEMENTS
+
+- feat: wrap errors with `%w` so callers can unwrap them
+
+BUILD
+
+- fix(deps): update github.com/protonmail/go-crypto digest to cb82d93
+- fix(deps): update module github.com/stretchr/testify to v1.8.2
+- fix(deps): update module golang.org/x/crypto to v0.7.0
+
 ## v0.9.0 (Released 2023-02-01)
 
 ADDITIONS
