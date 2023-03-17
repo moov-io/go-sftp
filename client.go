@@ -119,7 +119,7 @@ func (c *client) connection() (*sftp.Client, error) {
 
 	conn, stdin, stdout, err := sftpConnect(c.logger, c.cfg)
 	if err != nil {
-		return nil, fmt.Errorf("sftp: %v", err)
+		return nil, fmt.Errorf("sftp: %w", err)
 	}
 	c.conn = conn
 
@@ -135,7 +135,7 @@ func (c *client) connection() (*sftp.Client, error) {
 	client, err := sftp.NewClientPipe(stdout, stdin, opts...)
 	if err != nil {
 		go conn.Close()
-		return nil, fmt.Errorf("sftp: sftp connect: %v", err)
+		return nil, fmt.Errorf("sftp: sftp connect: %w", err)
 	}
 	c.client = client
 
@@ -164,7 +164,7 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 	if cfg.HostPublicKey != "" {
 		pubKey, err := sshx.ReadPubKey([]byte(cfg.HostPublicKey))
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("problem parsing ssh public key: %v", err)
+			return nil, nil, nil, fmt.Errorf("problem parsing ssh public key: %w", err)
 		}
 		conf.HostKeyCallback = ssh.FixedHostKey(pubKey)
 	} else {
@@ -181,7 +181,7 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 	if cfg.ClientPrivateKey != "" {
 		signer, err := readSigner(cfg.ClientPrivateKey, cfg.ClientPrivateKeyPassword)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("sftpConnect: failed to read client private key: %v", err)
+			return nil, nil, nil, fmt.Errorf("sftpConnect: failed to read client private key: %w", err)
 		}
 		conf.Auth = append(conf.Auth, ssh.PublicKeys(signer))
 	}
@@ -199,7 +199,7 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 		}
 	}
 	if client == nil && err != nil {
-		return nil, nil, nil, fmt.Errorf("sftpConnect: %v", err)
+		return nil, nil, nil, fmt.Errorf("sftpConnect: %w", err)
 	}
 
 	session, err := client.NewSession()
@@ -257,7 +257,7 @@ func (c *client) Ping() error {
 	_, err = conn.ReadDir(".")
 	c.record(err)
 	if err != nil {
-		return fmt.Errorf("sftp: ping %v", err)
+		return fmt.Errorf("sftp: ping %w", err)
 	}
 	return nil
 }
@@ -297,11 +297,11 @@ func (c *client) Delete(path string) error {
 
 	info, err := conn.Stat(path)
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("sftp: delete stat: %v", err)
+		return fmt.Errorf("sftp: delete stat: %w", err)
 	}
 	if info != nil {
 		if err := conn.Remove(path); err != nil {
-			return fmt.Errorf("sftp: delete: %v", err)
+			return fmt.Errorf("sftp: delete: %w", err)
 		}
 	}
 	return nil // not found
@@ -327,24 +327,24 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 	info, err := conn.Stat(dir)
 	if info == nil || (err != nil && os.IsNotExist(err)) {
 		if err := conn.Mkdir(dir); err != nil {
-			return fmt.Errorf("sftp: problem creating parent dir %s: %v", path, err)
+			return fmt.Errorf("sftp: problem creating parent dir %s: %w", path, err)
 		}
 	}
 
 	fd, err := conn.Create(path)
 	if err != nil {
-		return fmt.Errorf("sftp: problem creating %s: %v", path, err)
+		return fmt.Errorf("sftp: problem creating %s: %w", path, err)
 	}
 	defer fd.Close()
 
 	n, err := io.Copy(fd, contents)
 	if err != nil {
-		return fmt.Errorf("sftp: problem copying (n=%d) %s: %v", n, path, err)
+		return fmt.Errorf("sftp: problem copying (n=%d) %s: %w", n, path, err)
 	}
 
 	if !c.cfg.SkipChmodAfterUpload {
 		if err = fd.Chmod(0600); err != nil {
-			return fmt.Errorf("sftp: problem chmod %s: %v", path, err)
+			return fmt.Errorf("sftp: problem chmod %s: %w", path, err)
 		}
 	}
 
@@ -363,7 +363,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 
 	infos, err := conn.ReadDir(dir)
 	if err != nil {
-		return nil, fmt.Errorf("sftp: readdir %s: %v", dir, err)
+		return nil, fmt.Errorf("sftp: readdir %s: %w", dir, err)
 	}
 
 	var filenames []string
@@ -396,7 +396,7 @@ func (c *client) Reader(path string) (*File, error) {
 
 	fd, err := conn.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("sftp: open %s: %v", path, err)
+		return nil, fmt.Errorf("sftp: open %s: %w", path, err)
 	}
 
 	modTime := time.Now().In(time.UTC)
@@ -424,9 +424,9 @@ func (c *client) Open(path string) (*File, error) {
 	if n, err := io.Copy(&buf, r.Contents); err != nil {
 		r.Close()
 		if err != nil && !strings.Contains(err.Error(), sftp.ErrInternalInconsistency.Error()) {
-			return nil, fmt.Errorf("sftp: read (n=%d) %s: %v", n, r.Filename, err)
+			return nil, fmt.Errorf("sftp: read (n=%d) %s: %w", n, r.Filename, err)
 		}
-		return nil, fmt.Errorf("sftp: read (n=%d) on %s: %v", n, r.Filename, err)
+		return nil, fmt.Errorf("sftp: read (n=%d) on %s: %w", n, r.Filename, err)
 	} else {
 		r.Close()
 	}
