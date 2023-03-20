@@ -16,7 +16,9 @@ import (
 type MockClient struct {
 	root string
 
-	Err error
+	Err                 error
+	Calls               int // count number of calls to Open(), Delete(), UploadFile(), ListFiles(), Walk()
+	DesiredErrResponses int // stop returning Err after this many calls to Open(), Delete(), UploadFile(), ListFiles(), Walk()
 }
 
 var _ Client = (&MockClient{})
@@ -44,7 +46,8 @@ func (c *MockClient) Reader(path string) (*File, error) {
 }
 
 func (c *MockClient) Open(path string) (*File, error) {
-	if c.Err != nil {
+	c.Calls++
+	if c.Err != nil && c.DesiredErrResponses > 0 {
 		return nil, c.Err
 	}
 	file, err := os.Open(filepath.Join(c.root, path))
@@ -59,11 +62,18 @@ func (c *MockClient) Open(path string) (*File, error) {
 }
 
 func (c *MockClient) Delete(path string) error {
+	c.Calls++
+	if c.Err != nil && c.DesiredErrResponses > 0 {
+		c.DesiredErrResponses--
+		return c.Err
+	}
 	return os.Remove(filepath.Join(c.root, path))
 }
 
 func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
-	if c.Err != nil {
+	c.Calls++
+	if c.Err != nil && c.DesiredErrResponses > 0 {
+		c.DesiredErrResponses--
 		return c.Err
 	}
 
@@ -78,7 +88,8 @@ func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
 }
 
 func (c *MockClient) ListFiles(dir string) ([]string, error) {
-	if c.Err != nil {
+	c.Calls++
+	if c.Err != nil && c.DesiredErrResponses > 0 {
 		return nil, c.Err
 	}
 
@@ -97,7 +108,8 @@ func (c *MockClient) ListFiles(dir string) ([]string, error) {
 }
 
 func (c *MockClient) Walk(dir string, fn fs.WalkDirFunc) error {
-	if c.Err != nil {
+	c.Calls++
+	if c.Err != nil && c.DesiredErrResponses > 0 {
 		return c.Err
 	}
 
