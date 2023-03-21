@@ -32,7 +32,7 @@ func TestMockClient(t *testing.T) {
 	require.NoError(t, err)
 
 	client.Err = errors.New("bad error")
-	client.DesiredErrResponses = 1
+	client.RemainingErrors = 1
 	err = client.UploadFile("/exists.txt", body)
 	require.Error(t, err)
 
