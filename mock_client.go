@@ -16,9 +16,9 @@ import (
 type MockClient struct {
 	root string
 
-	Err                 error
-	Calls               int // count number of calls to Open(), Delete(), UploadFile(), ListFiles(), Walk()
-	DesiredErrResponses int // stop returning Err after this many calls to Open(), Delete(), UploadFile(), ListFiles(), Walk()
+	Err              error
+	OperationsCalled int // count number of calls to Open(), Delete(), UploadFile(), ListFiles(), Walk()
+	RemainingErrors  int // stop returning Err after this many calls to Open(), Delete(), UploadFile(), ListFiles(), Walk()
 }
 
 var _ Client = (&MockClient{})
