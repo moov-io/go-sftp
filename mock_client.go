@@ -46,8 +46,9 @@ func (c *MockClient) Reader(path string) (*File, error) {
 }
 
 func (c *MockClient) Open(path string) (*File, error) {
-	c.Calls++
-	if c.Err != nil && c.DesiredErrResponses > 0 {
+	c.OperationsCalled++
+	if c.Err != nil && c.RemainingErrors > 0 {
+		c.RemainingErrors--
 		return nil, c.Err
 	}
 	file, err := os.Open(filepath.Join(c.root, path))
@@ -62,18 +63,18 @@ func (c *MockClient) Open(path string) (*File, error) {
 }
 
 func (c *MockClient) Delete(path string) error {
-	c.Calls++
-	if c.Err != nil && c.DesiredErrResponses > 0 {
-		c.DesiredErrResponses--
+	c.OperationsCalled++
+	if c.Err != nil && c.RemainingErrors > 0 {
+		c.RemainingErrors--
 		return c.Err
 	}
 	return os.Remove(filepath.Join(c.root, path))
 }
 
 func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
-	c.Calls++
-	if c.Err != nil && c.DesiredErrResponses > 0 {
-		c.DesiredErrResponses--
+	c.OperationsCalled++
+	if c.Err != nil && c.RemainingErrors > 0 {
+		c.RemainingErrors--
 		return c.Err
 	}
 
@@ -88,8 +89,9 @@ func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
 }
 
 func (c *MockClient) ListFiles(dir string) ([]string, error) {
-	c.Calls++
-	if c.Err != nil && c.DesiredErrResponses > 0 {
+	c.OperationsCalled++
+	if c.Err != nil && c.RemainingErrors > 0 {
+		c.RemainingErrors--
 		return nil, c.Err
 	}
 
@@ -108,8 +110,9 @@ func (c *MockClient) ListFiles(dir string) ([]string, error) {
 }
 
 func (c *MockClient) Walk(dir string, fn fs.WalkDirFunc) error {
-	c.Calls++
-	if c.Err != nil && c.DesiredErrResponses > 0 {
+	c.OperationsCalled++
+	if c.Err != nil && c.RemainingErrors > 0 {
+		c.RemainingErrors--
 		return c.Err
 	}
 
