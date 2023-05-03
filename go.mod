@@ -7,7 +7,7 @@ require (
 	github.com/go-kit/kit v0.12.0
 	github.com/moov-io/base v0.40.2
 	github.com/pkg/sftp v1.13.5
-	github.com/prometheus/client_golang v1.15.0
+	github.com/prometheus/client_golang v1.15.1
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/crypto v0.8.0
 )
