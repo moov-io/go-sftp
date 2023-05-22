@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230518184743-7afd39499903
 	github.com/go-kit/kit v0.12.0
-	github.com/moov-io/base v0.42.0
+	github.com/moov-io/base v0.43.0
 	github.com/pkg/sftp v1.13.5
 	github.com/prometheus/client_golang v1.15.1
 	github.com/stretchr/testify v1.8.3
