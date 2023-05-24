@@ -60,9 +60,6 @@ Moov GoSFTP is actively used in production environments. Please star the project
 ## Supported and tested platforms
 
 - 64-bit Linux (Ubuntu, Debian), macOS, and Windows
-- Raspberry Pi
-
-Note: 32-bit platforms have known issues and are not supported.
 
 ## Contributing
 
