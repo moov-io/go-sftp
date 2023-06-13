@@ -34,6 +34,10 @@ func TestClientErr(t *testing.T) {
 }
 
 func TestClient_New(t *testing.T) {
+	if testing.Short() {
+		t.Skip("-short flag was provided")
+	}
+
 	t.Run("Open and Close", func(t *testing.T) {
 		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
 			Hostname:       "localhost:2222",
