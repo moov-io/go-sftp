@@ -1,3 +1,17 @@
+## v0.10.0 (Released 2023-06-15)
+
+IMPROVEMENTS
+
+- feat: make File comply with the fs.File interface
+
+BUILD
+
+- build(deps): bump github.com/cloudflare/circl from 1.1.0 to 1.3.3
+- fix(deps): update module github.com/moov-io/base to v0.44.0
+- fix(deps): update module github.com/prometheus/client_golang to v1.16.0
+- fix(deps): update module github.com/stretchr/testify to v1.8.4
+- fix(deps): update module golang.org/x/crypto to v0.10.0
+
 ## v0.9.1 (Released 2023-03-17)
 
 IMPROVEMENTS
