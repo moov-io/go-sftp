@@ -399,8 +399,10 @@ func (c *client) Reader(path string) (*File, error) {
 		return nil, fmt.Errorf("sftp: open %s: %w", path, err)
 	}
 
+	var fileinfo fs.FileInfo
 	modTime := time.Now().In(time.UTC)
 	if stat, _ := fd.Stat(); stat != nil {
+		fileinfo = stat
 		modTime = stat.ModTime()
 	}
 
@@ -408,6 +410,7 @@ func (c *client) Reader(path string) (*File, error) {
 		Filename: fd.Name(),
 		Contents: fd,
 		ModTime:  modTime,
+		fileinfo: fileinfo,
 	}, nil
 }
 
