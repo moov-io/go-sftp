@@ -3,7 +3,7 @@ module github.com/moov-io/go-sftp
 go 1.19
 
 require (
-	github.com/ProtonMail/go-crypto v0.0.0-20230528122434-6f98819771a1
+	github.com/ProtonMail/go-crypto v0.0.0-20220407094043-a94812496cf5
 	github.com/go-kit/kit v0.12.0
 	github.com/moov-io/base v0.44.0
 	github.com/pkg/sftp v1.13.5
@@ -15,7 +15,6 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
