@@ -4,6 +4,8 @@ github.com/ProtonMail/go-crypto v0.0.0-20230528122434-6f98819771a1 h1:JMDGhoQvXN
 github.com/ProtonMail/go-crypto v0.0.0-20230528122434-6f98819771a1/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
 github.com/ProtonMail/go-crypto v0.0.0-20230619160724-3fbb1f12458c h1:figwFwYep1Qnl64Y+Rc8tyQWE0xvYAN+5EX+rD40pTU=
 github.com/ProtonMail/go-crypto v0.0.0-20230619160724-3fbb1f12458c/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
+github.com/ProtonMail/go-crypto v0.0.0-20230626094100-7e9e0395ebec h1:vV3RryLxt42+ZIVOFbYJCH1jsZNTNmj2NYru5zfx+4E=
+github.com/ProtonMail/go-crypto v0.0.0-20230626094100-7e9e0395ebec/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
 github.com/VividCortex/gohistogram v1.0.0 h1:6+hBz+qvs0JOrrNhhmR7lFxo5sINxBCGXrdtl/UvroE=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
