@@ -1,3 +1,12 @@
+## v0.10.1 (Released 2023-08-08)
+
+BUILD
+
+- build: use the latest stable Go release
+- build: update golang.org/x/crypto to v0.12.0
+- fix(deps): update github.com/protonmail/go-crypto digest to 5aa5874
+- fix(deps): update module github.com/moov-io/base to v0.45.1
+
 ## v0.10.0 (Released 2023-06-15)
 
 IMPROVEMENTS
