@@ -1,3 +1,9 @@
+## v0.10.2 (Released 2023-08-14)
+
+BUILD
+
+- fix(deps): update module github.com/pkg/sftp to v1.13.6
+
 ## v0.10.1 (Released 2023-08-08)
 
 BUILD
