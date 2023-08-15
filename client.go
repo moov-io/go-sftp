@@ -353,30 +353,35 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 
 // ListFiles will return the filepaths of files within dir
 func (c *client) ListFiles(dir string) ([]string, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	conn, err := c.connection()
-	if err != nil {
-		return nil, err
-	}
-
-	infos, err := conn.ReadDir(dir)
-	if err != nil {
-		return nil, fmt.Errorf("sftp: readdir %s: %w", dir, err)
+	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
+	switch {
+	case pattern == ".":
+		if dir == "" {
+			pattern = "*"
+		} else {
+			pattern = filepath.Join(dir, "*")
+		}
+	case pattern != "":
+		pattern += "/*"
 	}
 
 	var filenames []string
-	for _, info := range infos {
-		if info.IsDir() {
-			continue
+	err := c.Walk(".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
-
-		filenames = append(filenames, filepath.Join(dir, info.Name()))
+		if d.IsDir() {
+			return nil
+		}
+		matches, err := filepath.Match(pattern, path)
+		if matches && err == nil {
+			filenames = append(filenames, filepath.Join(dir, filepath.Base(path)))
+		}
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
 	}
-
-	c.logger.Logf("found %d files: %s", len(infos), strings.Join(filenames, ", "))
-
 	return filenames, nil
 }
 
@@ -454,7 +459,11 @@ func (c *client) Walk(dir string, fn fs.WalkDirFunc) error {
 	}
 	// Pass the callback to each file found
 	for w.Step() {
-		err := fn(w.Path(), fs.FileInfoToDirEntry(w.Stat()), w.Err())
+		info := w.Stat()
+		if info.IsDir() {
+			continue
+		}
+		err := fn(w.Path(), fs.FileInfoToDirEntry(info), w.Err())
 		if err != nil {
 			if err == fs.SkipDir {
 				w.SkipDir()

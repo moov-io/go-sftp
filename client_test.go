@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"sort"
 	"testing"
 	"time"
 
@@ -33,22 +32,29 @@ func TestClientErr(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestClient_New(t *testing.T) {
+func TestClient(t *testing.T) {
 	if testing.Short() {
 		t.Skip("-short flag was provided")
 	}
 
-	t.Run("Open and Close", func(t *testing.T) {
-		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
-			Hostname:       "localhost:2222",
-			Username:       "demo",
-			Password:       "password",
-			Timeout:        5 * time.Second,
-			MaxConnections: 1,
-			PacketSize:     32000,
-		})
-		require.NoError(t, err)
+	client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
+		Hostname:       "localhost:2222",
+		Username:       "demo",
+		Password:       "password",
+		Timeout:        5 * time.Second,
+		MaxConnections: 1,
+		PacketSize:     32000,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, client.Close())
+	})
 
+	t.Run("Ping", func(t *testing.T) {
+		require.NoError(t, client.Ping())
+	})
+
+	t.Run("Open and Close", func(t *testing.T) {
 		file, err := client.Open("/outbox/one.txt")
 		require.NoError(t, err)
 		require.Greater(t, file.ModTime.Unix(), int64(1e7)) // valid unix time
@@ -58,20 +64,9 @@ func TestClient_New(t *testing.T) {
 		require.Equal(t, "one\n", string(content))
 
 		require.NoError(t, file.Close())
-		require.NoError(t, client.Close())
 	})
 
 	t.Run("Open with Reader and consume file", func(t *testing.T) {
-		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
-			Hostname:       "localhost:2222",
-			Username:       "demo",
-			Password:       "password",
-			Timeout:        5 * time.Second,
-			MaxConnections: 1,
-			PacketSize:     32000,
-		})
-		require.NoError(t, err)
-
 		file, err := client.Reader("/outbox/one.txt")
 		require.NoError(t, err)
 		require.Greater(t, file.ModTime.Unix(), int64(1e7)) // valid unix time
@@ -81,40 +76,57 @@ func TestClient_New(t *testing.T) {
 		require.Equal(t, "one\n", string(content))
 
 		require.NoError(t, file.Close())
-		require.NoError(t, client.Close())
 	})
 
 	t.Run("ListFiles", func(t *testing.T) {
-		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
-			Hostname:       "localhost:2222",
-			Username:       "demo",
-			Password:       "password",
-			Timeout:        5 * time.Second,
-			MaxConnections: 1,
-			PacketSize:     32000,
-		})
+		files, err := client.ListFiles("/")
 		require.NoError(t, err)
+		require.Len(t, files, 0)
 
-		files, err := client.ListFiles("/outbox")
+		files, err = client.ListFiles("/outbox")
 		require.NoError(t, err)
+		require.ElementsMatch(t, files, []string{"/outbox/one.txt", "/outbox/two.txt", "/outbox/empty.txt"})
 
-		sort.Strings(files)
-		require.Equal(t, []string{"/outbox/one.txt", "/outbox/two.txt"}, files)
+		files, err = client.ListFiles("outbox")
+		require.NoError(t, err)
+		require.ElementsMatch(t, files, []string{"outbox/one.txt", "outbox/two.txt", "outbox/empty.txt"})
 
-		require.NoError(t, client.Close())
+		files, err = client.ListFiles("outbox/")
+		require.NoError(t, err)
+		require.ElementsMatch(t, files, []string{"outbox/one.txt", "outbox/two.txt", "outbox/empty.txt"})
 	})
 
-	t.Run("Walk directory", func(t *testing.T) {
-		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
-			Hostname:       "localhost:2222",
-			Username:       "demo",
-			Password:       "password",
-			Timeout:        5 * time.Second,
-			MaxConnections: 1,
-			PacketSize:     32000,
+	t.Run("ListFiles subdir", func(t *testing.T) {
+		files, err := client.ListFiles("/outbox/archive")
+		require.NoError(t, err)
+		require.ElementsMatch(t, files, []string{"/outbox/archive/empty2.txt", "/outbox/archive/three.txt"})
+
+		files, err = client.ListFiles("outbox/archive")
+		require.NoError(t, err)
+		require.ElementsMatch(t, files, []string{"outbox/archive/empty2.txt", "outbox/archive/three.txt"})
+
+		files, err = client.ListFiles("outbox/archive/")
+		require.NoError(t, err)
+		require.ElementsMatch(t, files, []string{"outbox/archive/empty2.txt", "outbox/archive/three.txt"})
+	})
+
+	t.Run("Walk", func(t *testing.T) {
+		var walkedFiles []string
+		err = client.Walk(".", func(path string, info fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			walkedFiles = append(walkedFiles, path)
+			return nil
 		})
 		require.NoError(t, err)
+		require.ElementsMatch(t, walkedFiles, []string{
+			"outbox/one.txt", "outbox/two.txt", "outbox/empty.txt",
+			"outbox/archive/empty2.txt", "outbox/archive/three.txt",
+		})
+	})
 
+	t.Run("Walk subdir", func(t *testing.T) {
 		var walkedFiles []string
 		err = client.Walk("/outbox", func(path string, info fs.DirEntry, err error) error {
 			if err != nil {
@@ -124,36 +136,13 @@ func TestClient_New(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		require.Contains(t, walkedFiles, "/outbox/one.txt", "/outbox/two.txt")
-
-		require.NoError(t, client.Close())
-	})
-
-	t.Run("Ping", func(t *testing.T) {
-		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
-			Hostname:       "localhost:2222",
-			Username:       "demo",
-			Password:       "password",
-			Timeout:        5 * time.Second,
-			MaxConnections: 1,
-			PacketSize:     32000,
+		require.ElementsMatch(t, walkedFiles, []string{
+			"/outbox/one.txt", "/outbox/two.txt", "/outbox/empty.txt",
+			"/outbox/archive/empty2.txt", "/outbox/archive/three.txt",
 		})
-		require.NoError(t, err)
-
-		require.NoError(t, client.Ping())
 	})
 
 	t.Run("Upload and Delete", func(t *testing.T) {
-		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
-			Hostname:       "localhost:2222",
-			Username:       "demo",
-			Password:       "password",
-			Timeout:        5 * time.Second,
-			MaxConnections: 1,
-			PacketSize:     32000,
-		})
-		require.NoError(t, err)
-
 		// upload file
 		fileName := fmt.Sprintf("/upload/%d.txt", time.Now().Unix())
 		err = client.UploadFile(fileName, io.NopCloser(bytes.NewBufferString("random")))
@@ -175,21 +164,9 @@ func TestClient_New(t *testing.T) {
 		require.EqualError(t, err, fmt.Sprintf("sftp: open %s: file does not exist", fileName))
 
 		require.NoError(t, file.Close())
-		require.NoError(t, client.Close())
 	})
 
 	t.Run("Skip chmod after upload", func(t *testing.T) {
-		client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
-			Hostname:             "localhost:2222",
-			Username:             "demo",
-			Password:             "password",
-			Timeout:              5 * time.Second,
-			MaxConnections:       1,
-			PacketSize:           32000,
-			SkipChmodAfterUpload: true,
-		})
-		require.NoError(t, err)
-
 		// upload file
 		fileName := fmt.Sprintf("/upload/%d.txt", time.Now().Unix())
 		err = client.UploadFile(fileName, io.NopCloser(bytes.NewBufferString("random")))
