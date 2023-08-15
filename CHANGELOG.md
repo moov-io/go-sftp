@@ -1,3 +1,9 @@
+## v0.10.3 (Released 2023-08-15)
+
+IMPROVEMENTS
+
+- test: verify full path is returned, Walk skips directories
+
 ## v0.10.2 (Released 2023-08-14)
 
 BUILD
