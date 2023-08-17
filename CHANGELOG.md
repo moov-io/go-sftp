@@ -1,3 +1,10 @@
+## v0.11.0 (Released 2023-08-17)
+
+IMPROVEMENTS
+
+- feat: add an option to skip directory creation on upload
+- fix: sync files after writing to ensure storage, return .Close() error
+
 ## v0.10.3 (Released 2023-08-15)
 
 IMPROVEMENTS
