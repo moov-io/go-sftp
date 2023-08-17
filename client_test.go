@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,11 +20,11 @@ import (
 )
 
 func TestClientErr(t *testing.T) {
-	client, err := sftp.NewClient(log.NewNopLogger(), nil)
+	client, err := sftp.NewClient(log.NewTestLogger(), nil)
 	require.Error(t, err)
 	require.Nil(t, client)
 
-	_, err = sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
+	_, err = sftp.NewClient(log.NewTestLogger(), &sftp.ClientConfig{
 		Hostname:       "localhost:invalid",
 		Timeout:        0 * time.Second,
 		MaxConnections: 0,
@@ -37,7 +38,7 @@ func TestClient(t *testing.T) {
 		t.Skip("-short flag was provided")
 	}
 
-	client, err := sftp.NewClient(log.NewNopLogger(), &sftp.ClientConfig{
+	client, err := sftp.NewClient(log.NewTestLogger(), &sftp.ClientConfig{
 		Hostname:       "localhost:2222",
 		Username:       "demo",
 		Password:       "password",
@@ -182,5 +183,52 @@ func TestClient(t *testing.T) {
 		// delete file
 		err = client.Delete(fileName)
 		require.NoError(t, err)
+	})
+}
+
+func TestClient__UploadFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("-short flag was provided")
+	}
+
+	conf := &sftp.ClientConfig{
+		Hostname:       "localhost:2222",
+		Username:       "demo",
+		Password:       "password",
+		Timeout:        5 * time.Second,
+		MaxConnections: 1,
+		PacketSize:     32000,
+	}
+
+	subdir := fmt.Sprintf("%d", time.Now().UnixMilli())
+	path := fmt.Sprintf("/upload/deep/nested/%s/file.txt", subdir)
+
+	t.Run("don't create subdir", func(t *testing.T) {
+		conf.SkipDirectoryCreation = true
+		client, err := sftp.NewClient(log.NewTestLogger(), conf)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			require.NoError(t, client.Close())
+		})
+
+		contents := io.NopCloser(strings.NewReader("hello"))
+		err = client.UploadFile(path, contents)
+		require.ErrorContains(t, err, fmt.Sprintf("sftp: problem creating remote file %s: file does not exist", path))
+	})
+
+	t.Run("create subdir and upload", func(t *testing.T) {
+		conf.SkipDirectoryCreation = false
+		client, err := sftp.NewClient(log.NewTestLogger(), conf)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			require.NoError(t, client.Close())
+		})
+
+		contents := io.NopCloser(strings.NewReader("hello"))
+		err = client.UploadFile(path, contents)
+		require.NoError(t, err)
+
+		// Cleanup
+		require.NoError(t, client.Delete(path))
 	})
 }
