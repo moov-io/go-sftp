@@ -54,7 +54,8 @@ type ClientConfig struct {
 	ClientPrivateKey         string
 	ClientPrivateKeyPassword string // not base64 encoded
 
-	SkipChmodAfterUpload bool
+	SkipChmodAfterUpload  bool
+	SkipDirectoryCreation bool
 }
 
 type Client interface {
@@ -321,19 +322,25 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 		return err
 	}
 
-	dir, _ := filepath.Split(path)
-
 	// Create the directory if it doesn't exist
-	info, err := conn.Stat(dir)
-	if info == nil || (err != nil && os.IsNotExist(err)) {
-		if err := conn.Mkdir(dir); err != nil {
-			return fmt.Errorf("sftp: problem creating parent dir %s: %w", path, err)
+	if !c.cfg.SkipDirectoryCreation {
+		dir, _ := filepath.Split(path)
+
+		info, err := conn.Stat(dir)
+		if info == nil || err != nil {
+			if os.IsNotExist(err) || strings.Contains(err.Error(), "file does not exist") {
+				if err := conn.MkdirAll(dir); err != nil {
+					return fmt.Errorf("sftp: problem creating %s as parent dir: %w", dir, err)
+				}
+			} else {
+				return fmt.Errorf("problem checking if %s exists: %w", dir, err)
+			}
 		}
 	}
 
 	fd, err := conn.Create(path)
 	if err != nil {
-		return fmt.Errorf("sftp: problem creating %s: %w", path, err)
+		return fmt.Errorf("sftp: problem creating remote file %s: %w", path, err)
 	}
 	defer fd.Close()
 
