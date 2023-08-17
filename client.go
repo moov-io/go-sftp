@@ -342,17 +342,27 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 	if err != nil {
 		return fmt.Errorf("sftp: problem creating remote file %s: %w", path, err)
 	}
-	defer fd.Close()
 
 	n, err := io.Copy(fd, contents)
 	if err != nil {
 		return fmt.Errorf("sftp: problem copying (n=%d) %s: %w", n, path, err)
 	}
 
+	if err := fd.Sync(); err != nil {
+		// Skip sync if the remote server doesn't support it
+		if !strings.Contains(err.Error(), "SSH_FX_OP_UNSUPPORTED") {
+			return fmt.Errorf("sftp: problem with sync on %s: %v", path, err)
+		}
+	}
+
 	if !c.cfg.SkipChmodAfterUpload {
 		if err = fd.Chmod(0600); err != nil {
 			return fmt.Errorf("sftp: problem chmod %s: %w", path, err)
 		}
+	}
+
+	if err := fd.Close(); err != nil {
+		return fmt.Errorf("sftp: closing %s after writing failed: %w", path, err)
 	}
 
 	return nil
