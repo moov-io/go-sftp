@@ -1,3 +1,9 @@
+## v0.11.1 (Released 2023-08-18)
+
+IMPROVEMENTS
+
+- fix: open files for writing when writing
+
 ## v0.11.0 (Released 2023-08-17)
 
 IMPROVEMENTS
