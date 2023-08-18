@@ -338,7 +338,9 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 		}
 	}
 
-	fd, err := conn.Create(path)
+	// Some servers don't allow you to open a file for reading and writing at the same time.
+	// For these we follow the pkg/sftp docs to open files for writing (not reading).
+	fd, err := conn.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
 	if err != nil {
 		return fmt.Errorf("sftp: problem creating remote file %s: %w", path, err)
 	}
