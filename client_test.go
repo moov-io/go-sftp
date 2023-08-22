@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -111,6 +112,41 @@ func TestClient(t *testing.T) {
 		require.ElementsMatch(t, files, []string{"outbox/archive/empty2.txt", "outbox/archive/three.txt"})
 	})
 
+	t.Run("list and read", func(t *testing.T) {
+		filenames, err := client.ListFiles("/outbox/with-empty")
+		require.NoError(t, err)
+
+		// randomize filename order
+		rand.Shuffle(len(filenames), func(i, j int) {
+			filenames[i], filenames[j] = filenames[j], filenames[i]
+		})
+		require.ElementsMatch(t, filenames, []string{
+			"/outbox/with-empty/EMPTY1.txt", "/outbox/with-empty/empty_file2.txt",
+			"/outbox/with-empty/data.txt", "/outbox/with-empty/data2.txt",
+		})
+
+		// read each file and get back expected contents
+		var contents []string
+		for i := range filenames {
+			var file *sftp.File
+			if i/2 == 0 {
+				file, err = client.Open(filenames[i])
+			} else {
+				file, err = client.Reader(filenames[i])
+			}
+			require.NoError(t, err, fmt.Sprintf("filenames[%d]", i))
+			require.NotNil(t, file, fmt.Sprintf("filenames[%d]", i))
+			require.NotNil(t, file.Contents, fmt.Sprintf("filenames[%d]", i))
+
+			bs, err := io.ReadAll(file.Contents)
+			require.NoError(t, err)
+
+			contents = append(contents, string(bs))
+		}
+
+		require.ElementsMatch(t, contents, []string{"", "", "also data\n", "has data\n"})
+	})
+
 	t.Run("Walk", func(t *testing.T) {
 		var walkedFiles []string
 		err = client.Walk(".", func(path string, info fs.DirEntry, err error) error {
@@ -124,6 +160,8 @@ func TestClient(t *testing.T) {
 		require.ElementsMatch(t, walkedFiles, []string{
 			"outbox/one.txt", "outbox/two.txt", "outbox/empty.txt",
 			"outbox/archive/empty2.txt", "outbox/archive/three.txt",
+			"outbox/with-empty/EMPTY1.txt", "outbox/with-empty/empty_file2.txt",
+			"outbox/with-empty/data.txt", "outbox/with-empty/data2.txt",
 		})
 	})
 
@@ -140,6 +178,8 @@ func TestClient(t *testing.T) {
 		require.ElementsMatch(t, walkedFiles, []string{
 			"/outbox/one.txt", "/outbox/two.txt", "/outbox/empty.txt",
 			"/outbox/archive/empty2.txt", "/outbox/archive/three.txt",
+			"/outbox/with-empty/EMPTY1.txt", "/outbox/with-empty/empty_file2.txt",
+			"/outbox/with-empty/data.txt", "/outbox/with-empty/data2.txt",
 		})
 	})
 
