@@ -370,10 +370,16 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 	return nil
 }
 
-// ListFiles will return the filepaths of files within dir
+// ListFiles will return the paths of files within dir. Paths are returned as locations from dir,
+// so if dir is an absolute path the returned paths will be.
+//
+// Paths are matched in case-insensitive comparisons, but results are returned exactly as they
+// appear on the server.
 func (c *client) ListFiles(dir string) ([]string, error) {
 	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
 	switch {
+	case dir == "/":
+		pattern = "*"
 	case pattern == ".":
 		if dir == "" {
 			pattern = "*"
@@ -392,9 +398,22 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		if d.IsDir() {
 			return nil
 		}
-		matches, err := filepath.Match(pattern, path)
+
+		// Check if the server's path matches what we're searching for in a case-insensitive comparison.
+		matches, err := filepath.Match(strings.ToLower(pattern), strings.ToLower(path))
 		if matches && err == nil {
-			filenames = append(filenames, filepath.Join(dir, filepath.Base(path)))
+			// Return the path with exactly the case on the server.
+			idx := strings.Index(strings.ToLower(path), strings.ToLower(strings.TrimSuffix(pattern, "*")))
+			if idx > -1 {
+				path = path[idx:]
+				if strings.HasPrefix(dir, "/") && !strings.HasPrefix(path, "/") {
+					path = "/" + path
+				}
+				filenames = append(filenames, path)
+			} else {
+				// Fallback to Go logic of presenting the path
+				filenames = append(filenames, filepath.Join(dir, filepath.Base(path)))
+			}
 		}
 		return err
 	})
