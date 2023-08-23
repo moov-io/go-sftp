@@ -1,3 +1,11 @@
+## v0.12.0 (Released 2023-08-23)
+
+IMPROVEMENTS
+
+- fix(deps): update module github.com/moov-io/base to v0.46.0
+- fix: clarify ListFiles returns case intensive matches but returns server case
+- test: add "list and read" checks
+
 ## v0.11.1 (Released 2023-08-18)
 
 IMPROVEMENTS
