@@ -81,9 +81,13 @@ func TestClient(t *testing.T) {
 	})
 
 	t.Run("ListFiles", func(t *testing.T) {
-		files, err := client.ListFiles("/")
+		files, err := client.ListFiles(".")
 		require.NoError(t, err)
-		require.Len(t, files, 0)
+		require.ElementsMatch(t, files, []string{"root.txt"})
+
+		files, err = client.ListFiles("/")
+		require.NoError(t, err)
+		require.ElementsMatch(t, files, []string{"/root.txt"})
 
 		files, err = client.ListFiles("/outbox")
 		require.NoError(t, err)
@@ -147,6 +151,16 @@ func TestClient(t *testing.T) {
 		require.ElementsMatch(t, contents, []string{"", "", "also data\n", "has data\n"})
 	})
 
+	t.Run("ListFiles case testing", func(t *testing.T) {
+		files, err := client.ListFiles("/outbox/upper")
+		require.NoError(t, err)
+		require.ElementsMatch(t, files, []string{"/outbox/Upper/names.txt"})
+
+		files, err = client.ListFiles("outbox/ARCHIVE")
+		require.NoError(t, err)
+		require.ElementsMatch(t, files, []string{"outbox/archive/empty2.txt", "outbox/archive/three.txt"})
+	})
+
 	t.Run("Walk", func(t *testing.T) {
 		var walkedFiles []string
 		err = client.Walk(".", func(path string, info fs.DirEntry, err error) error {
@@ -158,6 +172,8 @@ func TestClient(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.ElementsMatch(t, walkedFiles, []string{
+			"root.txt",
+			"outbox/Upper/names.txt",
 			"outbox/one.txt", "outbox/two.txt", "outbox/empty.txt",
 			"outbox/archive/empty2.txt", "outbox/archive/three.txt",
 			"outbox/with-empty/EMPTY1.txt", "outbox/with-empty/empty_file2.txt",
@@ -176,6 +192,7 @@ func TestClient(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.ElementsMatch(t, walkedFiles, []string{
+			"/outbox/Upper/names.txt",
 			"/outbox/one.txt", "/outbox/two.txt", "/outbox/empty.txt",
 			"/outbox/archive/empty2.txt", "/outbox/archive/three.txt",
 			"/outbox/with-empty/EMPTY1.txt", "/outbox/with-empty/empty_file2.txt",
