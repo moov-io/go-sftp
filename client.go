@@ -377,6 +377,8 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 // appear on the server.
 func (c *client) ListFiles(dir string) ([]string, error) {
 	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
+	wd := "."
+	var err error
 	switch {
 	case dir == "/":
 		pattern = "*"
@@ -387,11 +389,15 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 			pattern = filepath.Join(dir, "*")
 		}
 	case pattern != "":
-		pattern += "/*"
+		pattern = "[/?]" + pattern + "/*"
+		wd, err = c.client.Getwd()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var filenames []string
-	err := c.Walk(".", func(path string, d fs.DirEntry, err error) error {
+	err = c.Walk(wd, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -403,7 +409,8 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		matches, err := filepath.Match(strings.ToLower(pattern), strings.ToLower(path))
 		if matches && err == nil {
 			// Return the path with exactly the case on the server.
-			idx := strings.Index(strings.ToLower(path), strings.ToLower(strings.TrimSuffix(pattern, "*")))
+			trimmedPattern := strings.TrimPrefix(strings.TrimSuffix(pattern, "*"), "[/?]")
+			idx := strings.Index(strings.ToLower(path), strings.ToLower(trimmedPattern))
 			if idx > -1 {
 				path = path[idx:]
 				if strings.HasPrefix(dir, "/") && !strings.HasPrefix(path, "/") {
