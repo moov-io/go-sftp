@@ -1,3 +1,15 @@
+## v0.12.1 (Released 2023-08-28)
+
+IMPROVEMENTS
+
+- fix: check walker error before stat calls
+- fix: handle special case for listfiles
+
+BUILD
+
+- fix(deps): update github.com/protonmail/go-crypto digest to 3c4c8a2
+- fix(deps): update module github.com/go-kit/kit to v0.13.0
+
 ## v0.12.0 (Released 2023-08-23)
 
 IMPROVEMENTS
