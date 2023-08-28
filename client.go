@@ -497,8 +497,11 @@ func (c *client) Walk(dir string, fn fs.WalkDirFunc) error {
 	}
 	// Pass the callback to each file found
 	for w.Step() {
+		if err := w.Err(); err != nil {
+			return err
+		}
 		info := w.Stat()
-		if info.IsDir() {
+		if info == nil || info.IsDir() {
 			continue
 		}
 		err := fn(w.Path(), fs.FileInfoToDirEntry(info), w.Err())
