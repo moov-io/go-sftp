@@ -1,3 +1,9 @@
+## v0.12.2 (Released 2023-08-30)
+
+IMPROVEMENTS
+
+- fix: use the connection() helper to check for network errors
+
 ## v0.12.1 (Released 2023-08-28)
 
 IMPROVEMENTS
