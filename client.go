@@ -377,8 +377,13 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 // appear on the server.
 func (c *client) ListFiles(dir string) ([]string, error) {
 	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
+
+	conn, err := c.connection()
+	if err != nil {
+		return nil, err
+	}
+
 	wd := "."
-	var err error
 	switch {
 	case dir == "/":
 		pattern = "*"
@@ -390,7 +395,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		}
 	case pattern != "":
 		pattern = "[/?]" + pattern + "/*"
-		wd, err = c.client.Getwd()
+		wd, err = conn.Getwd()
 		if err != nil {
 			return nil, err
 		}
@@ -498,7 +503,12 @@ func (c *client) Walk(dir string, fn fs.WalkDirFunc) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	w := c.client.Walk(dir)
+	conn, err := c.connection()
+	if err != nil {
+		return err
+	}
+
+	w := conn.Walk(dir)
 	if w == nil {
 		return errors.New("nil *fs.Walker")
 	}
