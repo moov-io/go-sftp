@@ -1,3 +1,14 @@
+## v0.13.0 (Released 2023-09-13)
+
+IMPROVEMENTS
+
+- feat: detect connection errors and force a reconnect
+- meta: stop writing warning to stdout
+
+BUILD
+
+- fix(deps): update module golang.org/x/crypto to v0.13.0
+
 ## v0.12.2 (Released 2023-08-30)
 
 IMPROVEMENTS
