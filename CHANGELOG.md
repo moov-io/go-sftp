@@ -1,3 +1,16 @@
+## v0.13.1 (Released 2023-11-08)
+
+IMPROVEMENTS
+
+- test: verify larger files (~10MB) can be streamed and read fully
+
+BUILD
+
+- fix(deps): update github.com/protonmail/go-crypto digest to afb1ddc
+- fix(deps): update module github.com/moov-io/base to v0.48.0
+- fix(deps): update module github.com/prometheus/client_golang to v1.17.0
+- fix(deps): update module golang.org/x/crypto to v0.14.0
+
 ## v0.13.0 (Released 2023-09-13)
 
 IMPROVEMENTS
