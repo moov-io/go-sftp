@@ -6,6 +6,7 @@ services:
       - "2222:22"
     volumes:
       - "./testdata/outbox:/home/demo/outbox"
+      - "./testdata/bigdata:/home/demo/bigdata"
       - "./testdata/root.txt:/home/demo/root.txt"
     command:
       - "demo:password:::outbox,upload"

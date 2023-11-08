@@ -10,6 +10,8 @@ import (
 	"io"
 	"io/fs"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -68,6 +70,20 @@ func TestClient(t *testing.T) {
 		require.NoError(t, file.Close())
 	})
 
+	t.Run("open larger files", func(t *testing.T) {
+		largerFileSize := size(t, filepath.Join("testdata", "bigdata", "large.txt"))
+
+		file, err := client.Open("/bigdata/large.txt")
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, file)
+		require.NoError(t, err)
+
+		require.NoError(t, file.Close())
+		require.Equal(t, largerFileSize, len(buf.Bytes()))
+	})
+
 	t.Run("Open with Reader and consume file", func(t *testing.T) {
 		file, err := client.Reader("/outbox/one.txt")
 		require.NoError(t, err)
@@ -78,6 +94,20 @@ func TestClient(t *testing.T) {
 		require.Equal(t, "one\n", string(content))
 
 		require.NoError(t, file.Close())
+	})
+
+	t.Run("read larger files", func(t *testing.T) {
+		largerFileSize := size(t, filepath.Join("testdata", "bigdata", "large.txt"))
+
+		file, err := client.Reader("/bigdata/large.txt")
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, file)
+		require.NoError(t, err)
+
+		require.NoError(t, file.Close())
+		require.Equal(t, largerFileSize, len(buf.Bytes()))
 	})
 
 	t.Run("ListFiles", func(t *testing.T) {
@@ -173,6 +203,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 		require.ElementsMatch(t, walkedFiles, []string{
 			"root.txt",
+			"bigdata/large.txt",
 			"outbox/Upper/names.txt",
 			"outbox/one.txt", "outbox/two.txt", "outbox/empty.txt",
 			"outbox/archive/empty2.txt", "outbox/archive/three.txt",
@@ -288,4 +319,16 @@ func TestClient__UploadFile(t *testing.T) {
 		// Cleanup
 		require.NoError(t, client.Delete(path))
 	})
+}
+
+func size(t *testing.T, where string) int {
+	t.Helper()
+
+	fd, err := os.Open(where)
+	require.NoError(t, err)
+
+	info, err := fd.Stat()
+	require.NoError(t, err)
+
+	return int(info.Size())
 }
