@@ -32,6 +32,8 @@ github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 h1:jWpvCLoY8Z/e3VKvls
 github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0/go.mod h1:QUyp042oQthUoa9bqDv0ER0wrtXnBruoNd7aNjkbP+k=
 github.com/moov-io/base v0.48.0 h1:HgCiwR3JoRGjoT2RA9Qh2QDXBnVjcZN9a2tGc/FxXyc=
 github.com/moov-io/base v0.48.0/go.mod h1:cFHUtEDjzxjc4SBjkntYNF4LB166iLN5eGR2BBSJenI=
+github.com/moov-io/base v0.48.1 h1:BVKjtEdR79ZjBeTF8Dl56ko43w3HaAnsUDhUoSVV9g4=
+github.com/moov-io/base v0.48.1/go.mod h1:cFHUtEDjzxjc4SBjkntYNF4LB166iLN5eGR2BBSJenI=
 github.com/pkg/sftp v1.13.6 h1:JFZT4XbOU7l77xGSpOdW+pwIMqP044IyjXX6FGyEKFo=
 github.com/pkg/sftp v1.13.6/go.mod h1:tz1ryNURKu77RL+GuCzmoJYxQczL3wLNNpPWagdg4Qk=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
