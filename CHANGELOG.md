@@ -1,3 +1,9 @@
+## v0.13.2 (Released 2023-12-19)
+
+BUILD
+
+- build: update moov-io/base and golang.org/x/crypto
+
 ## v0.13.1 (Released 2023-11-08)
 
 IMPROVEMENTS
