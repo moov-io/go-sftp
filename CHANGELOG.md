@@ -1,3 +1,16 @@
+## v0.13.3 (Released 2024-02-01)
+
+IMPROVEMENTS
+
+- fix: if conn.Stat returns no file Delete is successful
+
+BUILD
+
+- fix(deps): update module github.com/moov-io/base to v0.48.5
+- fix(deps): update module github.com/prometheus/client_golang to v1.18.0
+- fix(deps): update module github.com/protonmail/go-crypto to v1
+- fix(deps): update module golang.org/x/crypto to v0.18.0
+
 ## v0.13.2 (Released 2023-12-19)
 
 BUILD
