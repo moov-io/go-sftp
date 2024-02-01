@@ -255,6 +255,14 @@ func TestClient(t *testing.T) {
 		require.NoError(t, file.Close())
 	})
 
+	t.Run("Delete", func(t *testing.T) {
+		err := client.Delete("/missing.txt")
+		require.NoError(t, err)
+
+		err = client.Delete("/no-existing-dir/missing.txt")
+		require.NoError(t, err)
+	})
+
 	t.Run("Skip chmod after upload", func(t *testing.T) {
 		// upload file
 		fileName := fmt.Sprintf("/upload/%d.txt", time.Now().Unix())
