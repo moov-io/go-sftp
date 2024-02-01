@@ -338,10 +338,16 @@ func (c *client) Delete(path string) error {
 	}
 
 	info, err := conn.Stat(path)
-	err = c.clearConnectionOnError(err)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // file doesn't exist
+		}
+
+		// The error is something else related to STAT so return that
+		err = c.clearConnectionOnError(err)
 		return fmt.Errorf("sftp: delete stat: %w", err)
 	}
+
 	if info != nil {
 		err := conn.Remove(path)
 		err = c.clearConnectionOnError(err)
@@ -349,6 +355,7 @@ func (c *client) Delete(path string) error {
 			return fmt.Errorf("sftp: delete: %w", err)
 		}
 	}
+
 	return nil // not found
 }
 
