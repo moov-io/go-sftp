@@ -23,6 +23,22 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
+    - name: Install Docker Desktop
+      if: runner.os == 'Windows'
+      run: |
+        choco install docker-desktop
+
+    - name: Switch to Linux Containers
+      if: runner.os == 'Windows'
+      # Tips from https://stackoverflow.com/a/57081502
+      run: |
+        C:\"Program Files"\Docker\Docker\DockerCli.exe -SwitchLinuxEngine
+
+        Stop-Service -Name Docker
+        Start-Service -Name Docker
+
+        docker version
+
     - name: Setup
       run: make setup
 
