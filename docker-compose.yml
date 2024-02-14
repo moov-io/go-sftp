@@ -1,12 +1,29 @@
 version: '3.7'
+
+networks:
+  test-net: {}
+
 services:
   sftp:
     image: atmoz/sftp:latest
-    ports:
-      - "2222:22"
     volumes:
       - "./testdata/outbox:/home/demo/outbox"
       - "./testdata/bigdata:/home/demo/bigdata"
       - "./testdata/root.txt:/home/demo/root.txt"
     command:
       - "demo:password:::outbox,upload"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 6<> /dev/tcp/localhost/22'"]
+      interval: 2s
+    networks:
+      - test-net
+
+  testrunner:
+    depends_on:
+      sftp:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - test-net

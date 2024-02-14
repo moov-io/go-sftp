@@ -19,7 +19,7 @@ func TestNetwork(t *testing.T) {
 	}
 
 	client, err := sftp.NewClient(log.NewTestLogger(), &sftp.ClientConfig{
-		Hostname:       "localhost:2222",
+		Hostname:       "sftp:22",
 		Username:       "demo",
 		Password:       "password",
 		Timeout:        5 * time.Second,
