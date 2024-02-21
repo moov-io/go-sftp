@@ -50,10 +50,9 @@ Moov GoSFTP is actively used in production environments. Please star the project
 
 | channel                                                     | info                                                                                                                                    |
 |-------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| [Project Documentation](https://moov-io.github.io/go-sftp/) | Our project documentation available online.                                                                                             |
 | Twitter [@moov](https://twitter.com/moov)	                  | You can follow Moov.io's Twitter feed to get updates on our project(s). You can also tweet us questions or just share blogs or stories. |
 | [GitHub Issue](https://github.com/moov-io/go-sftp/issues)   | If you are able to reproduce a problem please open a GitHub Issue under the specific project that caused the error.                     |
-| [moov-io slack](https://slack.moov.io/)                     | Join our slack channel to have an interactive discussion about the development of the project.                                          |
+| [moov-io slack](https://slack.moov.io/)                     | Join our slack channel (`#infra`) to have an interactive discussion about the development of the project.                                          |
 
 ## Supported and tested platforms
 
