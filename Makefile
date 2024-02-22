@@ -40,10 +40,16 @@ else
 	@rm -rf ./bin/ cover.out coverage.txt misspell* staticcheck*
 endif
 
+PROFILE ?= unix
+ifeq ($(OS),Windows_NT)
+	PROFILE := windows
+endif
+
 setup:
-	docker-compose up -d --force-recreate --remove-orphans
+	docker-compose --profile $(PROFILE) up -d --force-recreate --remove-orphans sftp-$(PROFILE)
+
 teardown:
-	docker-compose down --remove-orphans
+	docker-compose --profile $(PROFILE) down --remove-orphans
 
 # For open source projects
 
