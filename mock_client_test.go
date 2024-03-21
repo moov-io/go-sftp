@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"os"
 	"strings"
 	"testing"
 
@@ -41,7 +42,9 @@ func TestMockClient(t *testing.T) {
 	paths, err := client.ListFiles("/")
 	require.NoError(t, err)
 	require.Len(t, paths, 1)
-	require.Equal(t, "/exists.txt", paths[0])
+
+	expected := string(os.PathSeparator) + "exists.txt"
+	require.Equal(t, expected, paths[0])
 }
 
 func TestMockClient_ListAndOpenFiles(t *testing.T) {
