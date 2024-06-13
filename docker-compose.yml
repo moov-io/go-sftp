@@ -1,7 +1,20 @@
 version: '3.7'
 services:
-  sftp:
+
+  sftp-windows:
+    image: emberstack/sftp
+    profiles:
+      - windows
+    # volumes:
+    #   - ./data/sftp.json:/app/config/sftp.json:ro
+    #   - ./data/sftpdata:/home/demo/sftp
+    ports:
+      - "2222:22"
+
+  sftp-unix:
     image: atmoz/sftp:latest
+    profiles:
+      - unix
     ports:
       - "2222:22"
     volumes:
