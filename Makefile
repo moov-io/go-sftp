@@ -41,9 +41,9 @@ else
 endif
 
 setup:
-	docker-compose up -d --force-recreate --remove-orphans
+	docker compose up -d --force-recreate --remove-orphans
 teardown:
-	docker-compose down --remove-orphans
+	docker compose down --remove-orphans
 
 # For open source projects
 
