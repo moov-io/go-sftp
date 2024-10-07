@@ -1,3 +1,18 @@
+## v0.13.4 (Released 2024-10-07)
+
+IMPROVEMENTS
+
+- fix: add connection error trap for list/walk funcs
+
+BUILD
+
+- build(deps): bump google.golang.org/protobuf from 1.32.0 to 1.33.0
+- chore(deps): update dependency go to v1.23.2
+- fix(deps): update module github.com/moov-io/base to v0.51.1
+- fix(deps): update module github.com/prometheus/client_golang to v1.20.2
+- fix(deps): update module github.com/stretchr/testify to v1.9.0
+- fix(deps): update module golang.org/x/crypto to v0.28.0
+
 ## v0.13.3 (Released 2024-02-01)
 
 IMPROVEMENTS
