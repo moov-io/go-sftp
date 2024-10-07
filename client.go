@@ -441,7 +441,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
 
 	conn, err := c.connection()
-	if err != nil {
+	if err = c.clearConnectionOnError(err); err != nil {
 		return nil, err
 	}
 
@@ -458,7 +458,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	case pattern != "":
 		pattern = "[/?]" + pattern + "/*"
 		wd, err = conn.Getwd()
-		if err != nil {
+		if err = c.clearConnectionOnError(err); err != nil {
 			return nil, err
 		}
 	}
@@ -568,7 +568,7 @@ func (c *client) Walk(dir string, fn fs.WalkDirFunc) error {
 	defer c.mu.Unlock()
 
 	conn, err := c.connection()
-	if err != nil {
+	if err = c.clearConnectionOnError(err); err != nil {
 		return err
 	}
 
