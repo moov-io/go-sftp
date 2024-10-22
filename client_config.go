@@ -12,7 +12,8 @@ type ClientConfig struct {
 	PacketSize     int
 
 	// HostPublicKey configures an SSH public key to validate the remote server's host key.
-	// This key will be appended to any additional keys provided in HostPublicKeys.
+	// If provided, this key will be merged into HostPublicKeys.
+	// Deprecated: Use HostPublicKeys instead.
 	HostPublicKey string
 
 	// HostPublicKeys configures multiple SSH public keys to validate the remote server's host key.
