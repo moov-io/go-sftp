@@ -1,3 +1,13 @@
+## v0.14.0 (Released 2024-10-22)
+
+ADDITIONS
+
+- feat: add `HostPublicKeys` to support multiple host keys
+
+BUILD
+
+- fix(deps): update module github.com/prometheus/client_golang to v1.20.5
+
 ## v0.13.4 (Released 2024-10-07)
 
 IMPROVEMENTS
