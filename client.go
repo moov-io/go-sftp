@@ -17,13 +17,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/moov-io/base/log"
-	"github.com/moov-io/go-sftp/pkg/sshx"
-
 	"github.com/go-kit/kit/metrics/prometheus"
+	"github.com/moov-io/base/log"
 	"github.com/pkg/sftp"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
-
 	"golang.org/x/crypto/ssh"
 )
 
@@ -38,25 +35,6 @@ var (
 		Help: "Counter of SFTP connection retry attempts",
 	}, []string{"hostname"})
 )
-
-type ClientConfig struct {
-	Hostname string
-	Username string
-	Password string
-
-	Timeout        time.Duration
-	MaxConnections int
-	PacketSize     int
-
-	HostPublicKey string
-
-	// ClientPrivateKey must be a base64 encoded string
-	ClientPrivateKey         string
-	ClientPrivateKeyPassword string // not base64 encoded
-
-	SkipChmodAfterUpload  bool
-	SkipDirectoryCreation bool
-}
 
 type Client interface {
 	Ping() error
@@ -186,7 +164,7 @@ func (c *client) clearConnectionOnError(err error) error {
 var (
 	hostKeyCallbackOnce sync.Once
 	hostKeyCallback     = func(logger log.Logger) {
-		msg := "sftp: WARNING!!! Insecure default of skipping SFTP host key validation. Please set HostPublicKey"
+		msg := "sftp: WARNING!!! Insecure default of skipping SFTP host key validation. Please set HostPublicKey(s)"
 		if logger != nil {
 			logger.Warn().Log(msg)
 		}
@@ -200,12 +178,12 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 	}
 	conf.SetDefaults()
 
-	if cfg.HostPublicKey != "" {
-		pubKey, err := sshx.ReadPubKey([]byte(cfg.HostPublicKey))
+	if hostKeys := cfg.HostKeys(); len(hostKeys) > 0 {
+		callback, err := NewMultiKeyCallback(hostKeys)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("problem parsing ssh public key: %w", err)
+			return nil, nil, nil, err
 		}
-		conf.HostKeyCallback = ssh.FixedHostKey(pubKey)
+		conf.HostKeyCallback = callback
 	} else {
 		hostKeyCallbackOnce.Do(func() {
 			hostKeyCallback(logger)
