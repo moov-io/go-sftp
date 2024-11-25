@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.23.3
 
 require (
-	github.com/ProtonMail/go-crypto v1.1.2
+	github.com/ProtonMail/go-crypto v1.1.3
 	github.com/go-kit/kit v0.13.0
 	github.com/moov-io/base v0.53.0
 	github.com/pkg/sftp v1.13.7
