@@ -41,7 +41,7 @@ func TestNetwork(t *testing.T) {
 
 		files, err := client.ListFiles("/outbox")
 		require.NoError(t, err)
-		require.Greater(t, len(files), 0)
+		require.NotEmpty(t, files)
 
 		// close it again for fun
 		require.NoError(t, client.Close())
@@ -49,6 +49,6 @@ func TestNetwork(t *testing.T) {
 		// try again
 		files, err = client.ListFiles("/outbox")
 		require.NoError(t, err)
-		require.Greater(t, len(files), 0)
+		require.NotEmpty(t, files)
 	})
 }

@@ -2,6 +2,7 @@ package go_sftp
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net"
 
@@ -32,5 +33,5 @@ func (m *MultiKeyCallback) check(_ string, _ net.Addr, key ssh.PublicKey) error 
 			return nil
 		}
 	}
-	return fmt.Errorf("sftp: no matching host keys")
+	return errors.New("sftp: no matching host keys")
 }

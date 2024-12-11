@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -81,7 +82,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NoError(t, file.Close())
-		require.Equal(t, largerFileSize, len(buf.Bytes()))
+		require.Len(t, buf.Bytes(), largerFileSize)
 	})
 
 	t.Run("Open with Reader and consume file", func(t *testing.T) {
@@ -107,7 +108,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NoError(t, file.Close())
-		require.Equal(t, largerFileSize, len(buf.Bytes()))
+		require.Len(t, buf.Bytes(), largerFileSize)
 	})
 
 	t.Run("ListFiles", func(t *testing.T) {
@@ -168,9 +169,9 @@ func TestClient(t *testing.T) {
 			} else {
 				file, err = client.Reader(filenames[i])
 			}
-			require.NoError(t, err, fmt.Sprintf("filenames[%d]", i))
-			require.NotNil(t, file, fmt.Sprintf("filenames[%d]", i))
-			require.NotNil(t, file.Contents, fmt.Sprintf("filenames[%d]", i))
+			require.NoError(t, err, "filenames[%d]", i)
+			require.NotNil(t, file, "filenames[%d]", i)
+			require.NotNil(t, file.Contents, "filenames[%d]", i)
 
 			bs, err := io.ReadAll(file.Contents)
 			require.NoError(t, err)
@@ -296,7 +297,7 @@ func TestClient__UploadFile(t *testing.T) {
 		PacketSize:     32000,
 	}
 
-	subdir := fmt.Sprintf("%d", time.Now().UnixMilli())
+	subdir := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	path := fmt.Sprintf("/upload/deep/nested/%s/file.txt", subdir)
 
 	t.Run("don't create subdir", func(t *testing.T) {
