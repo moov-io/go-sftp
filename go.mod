@@ -2,7 +2,7 @@ module github.com/moov-io/go-sftp
 
 go 1.21
 
-toolchain go1.23.4
+toolchain go1.23.5
 
 require (
 	github.com/ProtonMail/go-crypto v1.1.5
