@@ -554,18 +554,38 @@ func (c *client) Walk(dir string, fn fs.WalkDirFunc) error {
 	if w == nil {
 		return errors.New("nil *fs.Walker")
 	}
+
+	var skippedDirs []string
+
 	// Pass the callback to each file found
 	for w.Step() {
 		if err := w.Err(); err != nil {
 			return err
 		}
-		info := w.Stat()
-		if info == nil || info.IsDir() {
+
+		var skip bool
+		for _, sd := range skippedDirs {
+			matched := strings.HasPrefix(w.Path(), sd)
+			if matched {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			w.SkipDir()
 			continue
 		}
+
+		info := w.Stat()
+		if info == nil {
+			continue
+		}
+
 		err := fn(w.Path(), fs.FileInfoToDirEntry(info), w.Err())
 		if err != nil {
 			if err == fs.SkipDir {
+				skippedDirs = append(skippedDirs, filepath.Join(dir, ""))
+
 				w.SkipDir()
 			} else {
 				return err

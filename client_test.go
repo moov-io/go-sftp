@@ -198,17 +198,20 @@ func TestClient(t *testing.T) {
 			if err != nil {
 				return err
 			}
+			if strings.Contains(path, "upload") {
+				return fs.SkipDir
+			}
 			walkedFiles = append(walkedFiles, path)
 			return nil
 		})
 		require.NoError(t, err)
 		require.ElementsMatch(t, walkedFiles, []string{
-			"root.txt",
-			"bigdata/large.txt",
-			"outbox/Upper/names.txt",
+			".", "root.txt",
+			"bigdata", "bigdata/large.txt",
+			"outbox", "outbox/Upper", "outbox/Upper/names.txt",
 			"outbox/one.txt", "outbox/two.txt", "outbox/empty.txt",
-			"outbox/archive/empty2.txt", "outbox/archive/three.txt",
-			"outbox/with-empty/EMPTY1.txt", "outbox/with-empty/empty_file2.txt",
+			"outbox/archive", "outbox/archive/empty2.txt", "outbox/archive/three.txt",
+			"outbox/with-empty", "outbox/with-empty/EMPTY1.txt", "outbox/with-empty/empty_file2.txt",
 			"outbox/with-empty/data.txt", "outbox/with-empty/data2.txt",
 		})
 	})
@@ -224,12 +227,27 @@ func TestClient(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.ElementsMatch(t, walkedFiles, []string{
-			"/outbox/Upper/names.txt",
+			"/outbox",
+			"/outbox/Upper", "/outbox/Upper/names.txt",
 			"/outbox/one.txt", "/outbox/two.txt", "/outbox/empty.txt",
-			"/outbox/archive/empty2.txt", "/outbox/archive/three.txt",
+			"/outbox/archive", "/outbox/archive/empty2.txt", "/outbox/archive/three.txt",
+			"/outbox/with-empty",
 			"/outbox/with-empty/EMPTY1.txt", "/outbox/with-empty/empty_file2.txt",
 			"/outbox/with-empty/data.txt", "/outbox/with-empty/data2.txt",
 		})
+	})
+
+	t.Run("Walk SkipDir", func(t *testing.T) {
+		var walkedFiles []string
+		err = client.Walk("/outbox", func(path string, info fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			walkedFiles = append(walkedFiles, path)
+			return fs.SkipDir
+		})
+		require.NoError(t, err)
+		require.ElementsMatch(t, walkedFiles, []string{"/outbox"})
 	})
 
 	t.Run("Upload and Delete", func(t *testing.T) {
