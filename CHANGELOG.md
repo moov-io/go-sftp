@@ -1,3 +1,18 @@
+## v0.15.0 (Released 2025-01-23)
+
+This release of moov-io/go-ftp changes `Walk` to pass directories to `fs.WalkDirFunc`. Previous versions incorrectly mishandled `fs.SkipDir` and did not provide directories to callers.
+
+IMPROVEMENTS
+
+- fix: actually skip directories when SkipDir is returned by handler
+
+BUILD
+
+- chore(deps): update dependency go to v1.23.5 (#238)
+- fix(deps): update module github.com/pkg/sftp to v1.13.7
+- fix(deps): update module github.com/protonmail/go-crypto to v1.1.5 (#237)
+- fix(deps): update module golang.org/x/crypto to v0.31.0 (#235)
+
 ## v0.14.0 (Released 2024-10-22)
 
 ADDITIONS
