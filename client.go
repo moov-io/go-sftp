@@ -418,31 +418,42 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 func (c *client) ListFiles(dir string) ([]string, error) {
 	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
 
-	conn, err := c.connection()
-	if err = c.clearConnectionOnError(err); err != nil {
-		return nil, err
-	}
-
 	wd := "."
-	switch {
-	case dir == "/":
-		pattern = "*"
-	case pattern == ".":
-		if dir == "" {
-			pattern = "*"
-		} else {
-			pattern = filepath.Join(dir, "*")
+	if err := func() error {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+
+		conn, err := c.connection()
+		if err != nil {
+			return err
 		}
-	case pattern != "":
-		pattern = "[/?]" + pattern + "/*"
-		wd, err = conn.Getwd()
+
+		switch {
+		case dir == "/":
+			pattern = "*"
+		case pattern == ".":
+			if dir == "" {
+				pattern = "*"
+			} else {
+				pattern = filepath.Join(dir, "*")
+			}
+		case pattern != "":
+			pattern = "[/?]" + pattern + "/*"
+			wd, err = conn.Getwd()
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}(); err != nil {
 		if err = c.clearConnectionOnError(err); err != nil {
 			return nil, err
 		}
 	}
 
 	var filenames []string
-	err = c.Walk(wd, func(path string, d fs.DirEntry, err error) error {
+	if err := c.Walk(wd, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -468,10 +479,10 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 			}
 		}
 		return err
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
 	}
+
 	return filenames, nil
 }
 
