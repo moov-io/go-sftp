@@ -416,6 +416,9 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 // Paths are matched in case-insensitive comparisons, but results are returned exactly as they
 // appear on the server.
 func (c *client) ListFiles(dir string) ([]string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
 
 	conn, err := c.connection()
@@ -442,7 +445,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	}
 
 	var filenames []string
-	err = c.Walk(wd, func(path string, d fs.DirEntry, err error) error {
+	err = c.walkNoLock(wd, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -545,6 +548,10 @@ func (c *client) Walk(dir string, fn fs.WalkDirFunc) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	return c.walkNoLock(dir, fn)
+}
+
+func (c *client) walkNoLock(dir string, fn fs.WalkDirFunc) error {
 	conn, err := c.connection()
 	if err = c.clearConnectionOnError(err); err != nil {
 		return err
