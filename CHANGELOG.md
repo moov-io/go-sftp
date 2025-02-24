@@ -1,3 +1,13 @@
+## v0.15.1 (Released 2025-02-24)
+
+IMPROVEMENTS
+
+- fix: grab lock for entire ListFiles lifetime
+
+BUILD
+
+- fix(deps): update module golang.org/x/crypto to v0.35.0
+
 ## v0.15.0 (Released 2025-01-23)
 
 This release of moov-io/go-ftp changes `Walk` to pass directories to `fs.WalkDirFunc`. Previous versions incorrectly mishandled `fs.SkipDir` and did not provide directories to callers.
