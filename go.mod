@@ -8,7 +8,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.1.6
 	github.com/go-kit/kit v0.13.0
 	github.com/moov-io/base v0.54.1
-	github.com/pkg/sftp v1.13.7
+	github.com/pkg/sftp v1.13.8
 	github.com/prometheus/client_golang v1.21.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.36.0
