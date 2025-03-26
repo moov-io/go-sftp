@@ -70,7 +70,7 @@ To make a release of go-sftp simply open a pull request with `CHANGELOG.md` and 
 
 ### Testing
 
-We maintain a comprehensive suite of unit tests and recommend table-driven testing when a particular function warrants several very similar test cases. After starting the services with Docker Compose run all tests with `go test ./...`. Current overall coverage can be found on [Codecov](https://app.codecov.io/gh/moov-io/go-sftp/).
+We maintain a comprehensive suite of unit tests and recommend table-driven testing when a particular function warrants several very similar test cases. Run tests with `docker compose up --abort-on-container-exit --exit-code-from testrunner`. Current overall coverage can be found on [Codecov](https://app.codecov.io/gh/moov-io/go-sftp/).
 
 ## License
 
