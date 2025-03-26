@@ -384,12 +384,14 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 		return fmt.Errorf("sftp: problem copying (n=%d) %s: %w", n, path, err)
 	}
 
-	err = fd.Sync()
-	err = c.clearConnectionOnError(err)
-	if err != nil {
-		// Skip sync if the remote server doesn't support it
-		if !strings.Contains(err.Error(), "SSH_FX_OP_UNSUPPORTED") {
-			return fmt.Errorf("sftp: problem with sync on %s: %v", path, err)
+	if !c.cfg.SkipSyncAfterUpload {
+		err = fd.Sync()
+		err = c.clearConnectionOnError(err)
+		if err != nil {
+			// Skip sync if the remote server doesn't support it
+			if !strings.Contains(err.Error(), "SSH_FX_OP_UNSUPPORTED") {
+				return fmt.Errorf("sftp: problem with sync on %s: %v", path, err)
+			}
 		}
 	}
 
