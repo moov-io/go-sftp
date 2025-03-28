@@ -26,6 +26,7 @@ type ClientConfig struct {
 
 	SkipChmodAfterUpload  bool
 	SkipDirectoryCreation bool
+	SkipSyncAfterUpload   bool
 }
 
 // HostKeys returns the list of configured public keys to use for host key verification.
