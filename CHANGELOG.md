@@ -1,3 +1,15 @@
+## v0.16.0 (Released 2025-03-28)
+
+ADDITIONS
+
+- Add configuration option: `SkipSyncAfterUpload`
+
+BUILD
+
+- fix(deps): update module github.com/pkg/sftp to v1.13.9 (#255)
+- fix(deps): update module github.com/protonmail/go-crypto to v1.1.6 (#250)
+- fix(deps): update module github.com/moov-io/base to v0.54.2 (#254)
+
 ## v0.15.1 (Released 2025-02-24)
 
 IMPROVEMENTS
