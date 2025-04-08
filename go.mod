@@ -7,7 +7,7 @@ toolchain go1.24.2
 require (
 	github.com/ProtonMail/go-crypto v1.1.6
 	github.com/go-kit/kit v0.13.0
-	github.com/moov-io/base v0.54.2
+	github.com/moov-io/base v0.54.3
 	github.com/pkg/sftp v1.13.9
 	github.com/prometheus/client_golang v1.21.1
 	github.com/stretchr/testify v1.10.0
