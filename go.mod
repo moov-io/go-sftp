@@ -7,7 +7,7 @@ toolchain go1.24.2
 require (
 	github.com/ProtonMail/go-crypto v1.2.0
 	github.com/go-kit/kit v0.13.0
-	github.com/moov-io/base v0.54.3
+	github.com/moov-io/base v0.54.4
 	github.com/pkg/sftp v1.13.9
 	github.com/prometheus/client_golang v1.22.0
 	github.com/stretchr/testify v1.10.0
@@ -29,6 +29,6 @@ require (
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	golang.org/x/sys v0.32.0 // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
