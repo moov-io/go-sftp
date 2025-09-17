@@ -221,21 +221,29 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 
 	session, err := client.NewSession()
 	if err != nil {
-		go client.Close()
+		if client != nil {
+			go client.Close()
+		}
 		return nil, nil, nil, err
 	}
 	if err = session.RequestSubsystem("sftp"); err != nil {
-		go client.Close()
+		if client != nil {
+			go client.Close()
+		}
 		return nil, nil, nil, err
 	}
 	pw, err := session.StdinPipe()
 	if err != nil {
-		go client.Close()
+		if client != nil {
+			go client.Close()
+		}
 		return nil, nil, nil, err
 	}
 	pr, err := session.StdoutPipe()
 	if err != nil {
-		go client.Close()
+		if client != nil {
+			go client.Close()
+		}
 		return nil, nil, nil, err
 	}
 
