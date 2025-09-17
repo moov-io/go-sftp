@@ -378,6 +378,9 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 	if err != nil {
 		return fmt.Errorf("sftp: problem creating remote file %s: %w", path, err)
 	}
+	if fd == nil {
+		return fmt.Errorf("sftp: nil fd opening: %s", path)
+	}
 
 	n, err := io.Copy(fd, contents)
 	if err != nil {
@@ -499,6 +502,9 @@ func (c *client) Reader(path string) (*File, error) {
 	err = c.clearConnectionOnError(err)
 	if err != nil {
 		return nil, fmt.Errorf("sftp: open %s: %w", path, err)
+	}
+	if fd == nil {
+		return nil, fmt.Errorf("sftp: nil fd after opening %s", path)
 	}
 
 	var fileinfo fs.FileInfo
