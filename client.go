@@ -120,7 +120,9 @@ func (c *client) connection() (*sftp.Client, error) {
 	// client, err := sftp.NewClient(conn, opts...)
 	client, err := sftp.NewClientPipe(stdout, stdin, opts...)
 	if err != nil {
-		go conn.Close()
+		if conn != nil {
+			go conn.Close()
+		}
 		return nil, fmt.Errorf("sftp: sftp connect: %w", err)
 	}
 	c.client = client
@@ -215,8 +217,11 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 			time.Sleep(250 * time.Millisecond)
 		}
 	}
-	if client == nil && err != nil {
-		return nil, nil, nil, fmt.Errorf("sftpConnect: %w", err)
+	if client == nil {
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("sftpConnect: %w", err)
+		}
+		return nil, nil, nil, fmt.Errorf("sftpConnect: unable to establish ssh connection")
 	}
 
 	session, err := client.NewSession()
