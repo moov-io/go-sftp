@@ -1,3 +1,13 @@
+## Unreleased
+
+BREAKING CHANGES
+
+- Require `HostPublicKey(s)` for SFTP connections. The previous insecure default of skipping host key validation has been removed. Callers that intentionally skip verification must set `InsecureIgnoreHostKey: true` (tests/trusted networks only).
+
+IMPROVEMENTS
+
+- Fix CodeQL `go/insecure-hostkeycallback` by failing closed unless host keys are configured or insecure mode is explicitly enabled
+
 ## v0.16.0 (Released 2025-03-28)
 
 ADDITIONS
