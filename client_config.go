@@ -18,7 +18,13 @@ type ClientConfig struct {
 
 	// HostPublicKeys configures multiple SSH public keys to validate the remote server's host key.
 	// Any key provided in HostPublicKey will be appended to this list.
+	// At least one host key is required unless InsecureIgnoreHostKey is true.
 	HostPublicKeys []string
+
+	// InsecureIgnoreHostKey skips remote host key verification when no HostPublicKeys
+	// are configured. This is vulnerable to machine-in-the-middle attacks and should
+	// only be used in tests or fully trusted networks. Prefer HostPublicKeys.
+	InsecureIgnoreHostKey bool
 
 	// ClientPrivateKey must be a base64 encoded string
 	ClientPrivateKey         string
