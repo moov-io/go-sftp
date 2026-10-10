@@ -34,6 +34,15 @@ func TestClientErr(t *testing.T) {
 		MaxConnections: 0,
 		PacketSize:     0,
 	})
+	require.ErrorContains(t, err, "HostPublicKey")
+
+	_, err = sftp.NewClient(log.NewTestLogger(), &sftp.ClientConfig{
+		Hostname:              "localhost:invalid",
+		Timeout:               0 * time.Second,
+		MaxConnections:        0,
+		PacketSize:            0,
+		InsecureIgnoreHostKey: true,
+	})
 	require.Error(t, err)
 }
 
@@ -43,12 +52,13 @@ func TestClient(t *testing.T) {
 	}
 
 	client, err := sftp.NewClient(log.NewTestLogger(), &sftp.ClientConfig{
-		Hostname:       "localhost:2222",
-		Username:       "demo",
-		Password:       "password",
-		Timeout:        5 * time.Second,
-		MaxConnections: 1,
-		PacketSize:     32000,
+		Hostname:              "localhost:2222",
+		Username:              "demo",
+		Password:              "password",
+		Timeout:               5 * time.Second,
+		MaxConnections:        1,
+		PacketSize:            32000,
+		InsecureIgnoreHostKey: true,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -307,12 +317,13 @@ func TestClient__UploadFile(t *testing.T) {
 	}
 
 	conf := &sftp.ClientConfig{
-		Hostname:       "localhost:2222",
-		Username:       "demo",
-		Password:       "password",
-		Timeout:        5 * time.Second,
-		MaxConnections: 1,
-		PacketSize:     32000,
+		Hostname:              "localhost:2222",
+		Username:              "demo",
+		Password:              "password",
+		Timeout:               5 * time.Second,
+		MaxConnections:        1,
+		PacketSize:            32000,
+		InsecureIgnoreHostKey: true,
 	}
 
 	subdir := strconv.FormatInt(time.Now().UnixMilli(), 10)
