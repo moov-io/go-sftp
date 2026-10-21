@@ -37,6 +37,8 @@ type Client interface {
 }
 ```
 
+Configuration requires at least one of `HostPublicKey` / `HostPublicKeys` so the remote server identity is verified. For local tests only, set `InsecureIgnoreHostKey: true`.
+
 The library also includes a [mock client implementation](https://pkg.go.dev/github.com/moov-io/go-sftp#MockClient) which uses a local filesystem temporary directory for testing.
 
 ## Project status
