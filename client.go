@@ -163,16 +163,6 @@ func (c *client) clearConnectionOnError(err error) error {
 	return err
 }
 
-var (
-	hostKeyCallbackOnce sync.Once
-	hostKeyCallback     = func(logger log.Logger) {
-		msg := "sftp: WARNING!!! Insecure default of skipping SFTP host key validation. Please set HostPublicKey(s)"
-		if logger != nil {
-			logger.Warn().Log(msg)
-		}
-	}
-)
-
 func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteCloser, io.Reader, error) {
 	conf := &ssh.ClientConfig{
 		User:    cfg.Username,
@@ -186,12 +176,18 @@ func sftpConnect(logger log.Logger, cfg ClientConfig) (*ssh.Client, io.WriteClos
 			return nil, nil, nil, err
 		}
 		conf.HostKeyCallback = callback
-	} else {
-		hostKeyCallbackOnce.Do(func() {
-			hostKeyCallback(logger)
-		})
+	} else if cfg.InsecureIgnoreHostKey {
+		if logger != nil {
+			logger.Warn().Log("sftp: InsecureIgnoreHostKey enabled; remote host key will not be validated")
+		}
+		// Intentionally insecure and only reachable when callers opt in.
+		// Prefer HostPublicKeys in production.
+		//
+		// codeql[go/insecure-hostkeycallback] caller-opted-in insecure host key validation
 		//nolint:gosec
-		conf.HostKeyCallback = ssh.InsecureIgnoreHostKey() // insecure default
+		conf.HostKeyCallback = ssh.InsecureIgnoreHostKey()
+	} else {
+		return nil, nil, nil, errors.New("sftp: HostPublicKey(s) are required (set InsecureIgnoreHostKey to skip validation in tests)")
 	}
 	// Setup various Authentication methods
 	if cfg.Password != "" {
