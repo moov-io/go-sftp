@@ -1,3 +1,18 @@
+## v0.16.3 (Released 2026-11-18)
+
+IMPROVEMENTS
+
+- fix: only skip the directory that returned SkipDir in Walk (#363)
+
+BUILD
+
+- fix(deps): update module github.com/pkg/sftp to v1.13.12
+- fix(deps): update module github.com/moov-io/base to v0.68.2
+- fix(deps): update module golang.org/x/crypto to v0.59.0
+- fix(deps): update module github.com/protonmail/go-crypto to v1.5.2
+- fix(deps): update module github.com/stretchr/testify to v1.12.0
+- chore(deps): update go toolchain directive to v1.27.4
+
 ## v0.16.0 (Released 2025-03-28)
 
 ADDITIONS
