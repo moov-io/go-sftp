@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -593,8 +594,7 @@ func (c *client) walkNoLock(dir string, fn fs.WalkDirFunc) error {
 
 		var skip bool
 		for _, sd := range skippedDirs {
-			matched := strings.HasPrefix(w.Path(), sd)
-			if matched {
+			if isWithinDir(w.Path(), sd) {
 				skip = true
 				break
 			}
@@ -612,7 +612,13 @@ func (c *client) walkNoLock(dir string, fn fs.WalkDirFunc) error {
 		err := fn(w.Path(), fs.FileInfoToDirEntry(info), w.Err())
 		if err != nil {
 			if err == fs.SkipDir {
-				skippedDirs = append(skippedDirs, filepath.Join(dir, ""))
+				// SkipDir on a directory skips that directory. On a file it skips
+				// the remaining entries of the directory containing the file.
+				skipped := w.Path()
+				if !info.IsDir() {
+					skipped = path.Dir(skipped)
+				}
+				skippedDirs = append(skippedDirs, skipped)
 
 				w.SkipDir()
 			} else {
@@ -621,4 +627,16 @@ func (c *client) walkNoLock(dir string, fn fs.WalkDirFunc) error {
 		}
 	}
 	return w.Err()
+}
+
+// isWithinDir reports whether p is dir itself or an entry below it.
+// Remote paths always use forward slashes.
+func isWithinDir(p, dir string) bool {
+	if p == dir {
+		return true
+	}
+	if dir == "." {
+		return !strings.HasPrefix(p, "/")
+	}
+	return strings.HasPrefix(p, strings.TrimSuffix(dir, "/")+"/")
 }
