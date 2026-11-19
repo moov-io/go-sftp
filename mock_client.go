@@ -11,8 +11,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
+// MockClient is an in-process Client that stores files in a temporary
+// directory. It is intended for tests. NewMockClient requires a *testing.T.
 type MockClient struct {
 	root string
 
@@ -51,15 +54,28 @@ func (c *MockClient) Open(path string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, name := filepath.Split(path)
+	info, statErr := file.Stat()
+	modTime := time.Time{}
+	if statErr == nil && info != nil {
+		modTime = info.ModTime()
+	}
 	return &File{
-		Filename: name,
+		Filename: path,
 		Contents: file,
+		ModTime:  modTime,
+		fileinfo: info,
 	}, nil
 }
 
 func (c *MockClient) Delete(path string) error {
-	return os.Remove(filepath.Join(c.root, path))
+	if c.Err != nil {
+		return c.Err
+	}
+	err := os.Remove(filepath.Join(c.root, path))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
 }
 
 func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {

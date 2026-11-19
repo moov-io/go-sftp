@@ -25,7 +25,7 @@ func TestMockClient(t *testing.T) {
 	require.Error(t, err)
 
 	err = client.Delete("/missing.txt")
-	require.Error(t, err)
+	require.NoError(t, err)
 
 	body := io.NopCloser(strings.NewReader("contents"))
 	err = client.UploadFile("/exists.txt", body)
@@ -60,6 +60,8 @@ func TestMockClient_ListAndOpenFiles(t *testing.T) {
 		found, err := client.Open(file)
 		require.NoError(t, err)
 		require.NotNil(t, found)
+		require.Equal(t, file, found.Filename)
+		require.False(t, found.ModTime.IsZero())
 
 		contents, err := io.ReadAll(found.Contents)
 		require.NoError(t, err)
