@@ -11,8 +11,8 @@
 [![GoDoc](https://godoc.org/github.com/moov-io/go-sftp?status.svg)](https://godoc.org/github.com/moov-io/go-sftp)
 [![Build Status](https://github.com/moov-io/go-sftp/workflows/Go/badge.svg)](https://github.com/moov-io/go-sftp/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/moov-io/go-sftp)](https://goreportcard.com/report/github.com/moov-io/go-sftp)
-[![Apache 2 License](https://img.shields.io/badge/license-Apache2-blue.svg)](https://raw.githubusercontent.com/moov-io/ach/master/LICENSE)
-[![Slack Channel](https://slack.moov.io/badge.svg?bg=e01563&fgColor=fffff)](https://slack.moov.io/)
+[![Apache 2 License](https://img.shields.io/badge/license-Apache2-blue.svg)](https://raw.githubusercontent.com/moov-io/go-sftp/master/LICENSE)
+[![Slack Channel](https://img.shields.io/badge/Slack-Moov-e01563)](https://slack.moov.io/)
 [![Twitter](https://img.shields.io/twitter/follow/moov?style=social)](https://twitter.com/moov?lang=en)
 
 # moov-io/go-sftp
@@ -20,6 +20,60 @@
 Moov's mission is to give developers an easy way to create and integrate bank processing into their own software products. Our open source projects are each focused on solving a single responsibility in financial services and designed around performance, scalability, and ease of use.
 
 moov-io/go-sftp provides a simple [SFTP client](https://pkg.go.dev/github.com/moov-io/go-sftp#Client) for uploading, listing, and opening files on an SFTP server.
+
+This project requires **Go 1.26 or higher**. The current `go.mod` also sets `toolchain go1.27.4`.
+
+The package name is `go_sftp`, so import it with an alias:
+
+```go
+import (
+    "io"
+    "strings"
+
+    "github.com/moov-io/base/log"
+    gosftp "github.com/moov-io/go-sftp"
+)
+
+func main() {
+    client, err := gosftp.NewClient(log.NewDefaultLogger(), &gosftp.ClientConfig{
+        Hostname:       "sftp.example.com:22",
+        Username:       "alice",
+        Password:       "correct-horse",
+        HostPublicKeys: []string{"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleHostKey"},
+    })
+    if err != nil {
+        // client may still be non-nil; later calls will retry the connection
+        panic(err)
+    }
+    defer client.Close()
+
+    files, err := client.ListFiles("outbox")
+    if err != nil {
+        panic(err)
+    }
+
+    for _, path := range files {
+        file, err := client.Reader(path)
+        if err != nil {
+            panic(err)
+        }
+        // ... read file.Contents, then file.Close()
+        file.Close()
+    }
+
+    err = client.UploadFile("inbox/ppd.ach", io.NopCloser(strings.NewReader("file contents")))
+    if err != nil {
+        panic(err)
+    }
+
+    err = client.Delete("outbox/processed.ach")
+    if err != nil {
+        panic(err)
+    }
+}
+```
+
+A nil logger is allowed. `MaxConnections` defaults to 1 when it is left at zero.
 
 ```go
 type Client interface {
@@ -37,7 +91,37 @@ type Client interface {
 }
 ```
 
-The library also includes a [mock client implementation](https://pkg.go.dev/github.com/moov-io/go-sftp#MockClient) which uses a local filesystem temporary directory for testing.
+`ListFiles` returns the files in `dir` (not subdirectories; use `Walk` for a recursive listing). Relative directories are resolved against the SFTP working directory, so `ListFiles("outbox")` works on servers that are not chrooted to `/`. Returned paths use the same style as `dir` (relative or absolute).
+
+`Delete` is idempotent: it returns nil if the file does not exist.
+
+The library also includes a [mock client implementation](https://pkg.go.dev/github.com/moov-io/go-sftp#MockClient) which uses a local filesystem temporary directory for testing. `NewMockClient` requires a `*testing.T` and is intended for tests. The mock matches the real client for relative `ListFiles` paths, `Open`/`Reader` filenames, `ModTime`, and idempotent `Delete`.
+
+## Security / host keys
+
+If `HostPublicKey` and `HostPublicKeys` are both empty, the client skips host-key verification (`ssh.InsecureIgnoreHostKey`). A warning is logged (or written to standard error if the logger is nil). For any server that moves ACH or other financial files, pin the host key.
+
+`HostPublicKeys` accepts one key per slice element, in either of these formats:
+
+- an `authorized_keys` line, which is what `ssh-keyscan` prints
+- a base64-encoded key
+
+```bash
+ssh-keyscan -t ed25519,rsa sftp.example.com
+```
+
+```go
+cfg := &gosftp.ClientConfig{
+    Hostname: "sftp.example.com:22",
+    Username: "alice",
+    Password: "correct-horse",
+    HostPublicKeys: []string{
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleHostKey",
+    },
+}
+```
+
+The deprecated `HostPublicKey` field is still honored and merged into `HostPublicKeys`.
 
 ## Project status
 
@@ -59,15 +143,29 @@ moov-io/go-sftp is actively used in production environments. Please star the pro
 
 Yes please! Please review our [Contributing guide](CONTRIBUTING.md) and [Code of Conduct](https://github.com/moov-io/moov-slack-code-of-conduct) to get started!
 
-See [Golang's install instructions](https://golang.org/doc/install) for help setting up Go. You can download the source code and we offer [tagged and released versions](https://github.com/moov-io/go-sftp/releases/latest) as well. We highly recommend you use a tagged release for production.
+See [Golang's install instructions](https://go.dev/doc/install) for help setting up Go. You can download the source code and we offer [tagged and released versions](https://github.com/moov-io/go-sftp/releases/latest) as well. We highly recommend you use a tagged release for production.
 
 ### Releasing
 
-To make a release of go-sftp simply open a pull request with `CHANGELOG.md` and `version.go` updated with the next version number and details. You'll also need to push the tag (i.e. `git push origin v1.0.0`) to origin in order for CI to make the release.
+To make a release of go-sftp simply open a pull request with `CHANGELOG.md` updated with the next version number and details. You'll also need to push the tag (i.e. `git push origin v1.0.0`) to origin in order for CI to make the release.
 
 ### Testing
 
-We maintain a comprehensive suite of unit tests and recommend table-driven testing when a particular function warrants several very similar test cases. After starting the services with Docker Compose (`make setup`) run all tests with `make check`.
+Unit tests and examples can be run without Docker:
+
+```
+go test -short ./...
+```
+
+The integration tests in `client_test.go` and `network_test.go` talk to an SFTP server on `localhost:2222`. Docker and Docker Compose are required for that path:
+
+```
+make setup    # starts atmoz/sftp via docker compose
+go test ./...
+make teardown
+```
+
+`make test` runs `go test` with coverage. `make check` downloads the Moov lint script and needs network access.
 
 ## License
 
