@@ -29,7 +29,8 @@ endif
 
 # Extra utilities not needed for building
 
-test: update
+.PHONY: test
+test:
 	go test -cover github.com/moov-io/go-sftp/...
 
 .PHONY: clean
