@@ -33,6 +33,7 @@ func TestRebaseListResults(t *testing.T) {
 	t.Run("relative input from absolute search", func(t *testing.T) {
 		got := rebaseListResults(
 			[]string{"/home/user/outbox/ppd.ach"},
+			"/home/user",
 			"/home/user/outbox",
 			"outbox",
 		)
@@ -42,6 +43,7 @@ func TestRebaseListResults(t *testing.T) {
 	t.Run("trailing slash input", func(t *testing.T) {
 		got := rebaseListResults(
 			[]string{"/outbox/one.txt"},
+			"/",
 			"/outbox",
 			"outbox/",
 		)
@@ -49,23 +51,43 @@ func TestRebaseListResults(t *testing.T) {
 	})
 
 	t.Run("empty dir", func(t *testing.T) {
-		got := rebaseListResults([]string{"/root.txt"}, "/", "")
+		got := rebaseListResults([]string{"/root.txt"}, "/", "/", "")
 		require.Equal(t, []string{"root.txt"}, got)
 	})
 
 	t.Run("dot dir", func(t *testing.T) {
-		got := rebaseListResults([]string{"/root.txt"}, "/", ".")
+		got := rebaseListResults([]string{"/root.txt"}, "/", "/", ".")
 		require.Equal(t, []string{"root.txt"}, got)
 	})
 
 	t.Run("absolute input unchanged when search matches", func(t *testing.T) {
 		files := []string{"/outbox/one.txt"}
-		got := rebaseListResults(files, "/outbox", "/outbox")
+		got := rebaseListResults(files, "/", "/outbox", "/outbox")
 		require.Equal(t, files, got)
 	})
 
+	t.Run("case-insensitive input keeps server case", func(t *testing.T) {
+		got := rebaseListResults(
+			[]string{"/outbox/archive/three.txt"},
+			"/",
+			"/outbox/ARCHIVE",
+			"outbox/ARCHIVE",
+		)
+		require.Equal(t, []string{"outbox/archive/three.txt"}, got)
+	})
+
+	t.Run("non-chrooted working directory", func(t *testing.T) {
+		got := rebaseListResults(
+			[]string{"/home/user/outbox/Upper/names.txt"},
+			"/home/user",
+			"/home/user/outbox/upper",
+			"outbox/upper",
+		)
+		require.Equal(t, []string{"outbox/Upper/names.txt"}, got)
+	})
+
 	t.Run("root listing stays absolute", func(t *testing.T) {
-		got := rebaseListResults([]string{"/root.txt"}, "/", "/")
+		got := rebaseListResults([]string{"/root.txt"}, "/", "/", "/")
 		require.Equal(t, []string{"/root.txt"}, got)
 	})
 }

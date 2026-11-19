@@ -486,7 +486,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
 	}
-	return rebaseListResults(filenames, searchDir, dir), nil
+	return rebaseListResults(filenames, wd, searchDir, dir), nil
 }
 
 // resolveListDirectory joins a relative dir with the SFTP working directory
@@ -508,40 +508,22 @@ func resolveListDirectory(wd, dir string) string {
 	return path.Join(wd, dir)
 }
 
-// rebaseListResults rewrites paths from searchDir back into the style of the
-// directory the caller passed to ListFiles.
-func rebaseListResults(files []string, searchDir, inputDir string) []string {
-	if len(files) == 0 || searchDir == inputDir {
+// rebaseListResults rewrites paths found under searchDir back into the style
+// of the directory the caller passed to ListFiles. Absolute inputs are returned
+// unchanged. Relative inputs are returned relative to the working directory wd,
+// keeping the exact case the server reported.
+func rebaseListResults(files []string, wd, searchDir, inputDir string) []string {
+	if len(files) == 0 || searchDir == inputDir || strings.HasPrefix(inputDir, "/") {
 		return files
 	}
 
-	if searchDir != "/" {
-		searchDir = strings.TrimSuffix(searchDir, "/")
-	}
-	inputPrefix := strings.TrimSuffix(inputDir, "/")
-	inputPrefix = strings.TrimPrefix(inputPrefix, "./")
-	relativeInput := inputPrefix == "" || inputPrefix == "."
-
+	prefix := strings.TrimSuffix(wd, "/") + "/"
 	out := make([]string, 0, len(files))
 	for _, file := range files {
-		rest := file
-		if searchDir == "/" {
-			rest = strings.TrimPrefix(file, "/")
-		} else if searchDir != "" {
-			rest = strings.TrimPrefix(file, searchDir)
-			rest = strings.TrimPrefix(rest, "/")
+		if len(file) >= len(prefix) && strings.EqualFold(file[:len(prefix)], prefix) {
+			file = file[len(prefix):]
 		}
-		switch {
-		case relativeInput:
-			out = append(out, rest)
-		case inputDir == "/":
-			if !strings.HasPrefix(rest, "/") {
-				rest = "/" + rest
-			}
-			out = append(out, rest)
-		default:
-			out = append(out, inputPrefix+"/"+rest)
-		}
+		out = append(out, file)
 	}
 	return out
 }
