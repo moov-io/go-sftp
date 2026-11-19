@@ -28,13 +28,15 @@ func TestClientErr(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, client)
 
-	_, err = sftp.NewClient(log.NewTestLogger(), &sftp.ClientConfig{
+	client, err = sftp.NewClient(log.NewTestLogger(), &sftp.ClientConfig{
 		Hostname:       "localhost:invalid",
 		Timeout:        0 * time.Second,
 		MaxConnections: 0,
 		PacketSize:     0,
 	})
 	require.Error(t, err)
+	require.NotNil(t, client)
+	require.NotContains(t, err.Error(), "n must be greater or equal to 1")
 }
 
 func TestClient(t *testing.T) {

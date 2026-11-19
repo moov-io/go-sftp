@@ -2,6 +2,18 @@
 // Use of this source code is governed by an Apache License
 // license that can be found in the LICENSE file.
 
+// Package go_sftp provides an SFTP client for uploading, listing, and opening
+// files on a remote server.
+//
+// The package name is go_sftp, so import it with an alias:
+//
+//	import gosftp "github.com/moov-io/go-sftp"
+//
+// NewClient accepts a moov-io/base logger (a nil logger is allowed) and a
+// ClientConfig. If the initial connection fails, NewClient still returns a
+// non-nil Client along with the error so later calls can retry. Set at least
+// one of HostPublicKey or HostPublicKeys; leaving both empty disables host-key
+// verification.
 package go_sftp
 
 import (
@@ -60,12 +72,25 @@ type client struct {
 	client *sftp.Client
 }
 
+// NewClient returns an SFTP client for cfg.
+//
+// If the first connection attempt fails, NewClient still returns a non-nil
+// Client along with the error so later calls can retry. If cfg is nil, the
+// Client is nil.
+//
+// MaxConnections defaults to 1 when it is zero or negative. A nil logger is
+// allowed; pass a logger if you want connection and host-key warnings recorded
+// through moov-io/base. When host-key checking is skipped and logger is nil,
+// the warning is written to standard error.
 func NewClient(logger log.Logger, cfg *ClientConfig) (Client, error) {
 	if cfg == nil {
 		return nil, errors.New("nil SFTP config")
 	}
 
 	cc := &client{cfg: *cfg, logger: logger}
+	if cc.cfg.MaxConnections <= 0 {
+		cc.cfg.MaxConnections = 1
+	}
 
 	conn, err := cc.connection()
 	cc.record(err) // track up metric for remote server
@@ -170,6 +195,8 @@ var (
 		msg := "sftp: WARNING!!! Insecure default of skipping SFTP host key validation. Please set HostPublicKey(s)"
 		if logger != nil {
 			logger.Warn().Log(msg)
+		} else {
+			fmt.Fprintln(os.Stderr, msg)
 		}
 	}
 )
@@ -319,6 +346,7 @@ func (c *client) Close() error {
 	return nil
 }
 
+// Delete removes the file at path. If the file does not exist, Delete returns nil.
 func (c *client) Delete(path string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -429,8 +457,13 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 	return nil
 }
 
-// ListFiles will return the paths of files within dir. Paths are returned as locations from dir,
-// so if dir is an absolute path the returned paths will be.
+// ListFiles returns the files in dir, not including files in subdirectories.
+// Use Walk to traverse a tree recursively.
+//
+// Paths are returned in the same style as dir: an absolute dir yields absolute
+// paths, and a relative dir yields relative paths. Relative directories are
+// resolved against the SFTP working directory, so ListFiles("outbox") works
+// on servers that are not chrooted to /.
 //
 // Paths are matched in case-insensitive comparisons, but results are returned exactly as they
 // appear on the server.
@@ -438,12 +471,83 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
-
 	conn, err := c.connection()
 	if err = c.clearConnectionOnError(err); err != nil {
 		return nil, err
 	}
+
+	wd, err := conn.Getwd()
+	if err = c.clearConnectionOnError(err); err != nil {
+		return nil, err
+	}
+
+	searchDir := resolveListDirectory(wd, dir)
+	filenames, err := c.listFilesAt(searchDir)
+	if err != nil {
+		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
+	}
+	return rebaseListResults(filenames, searchDir, dir), nil
+}
+
+// resolveListDirectory joins a relative dir with the SFTP working directory
+// so listings work on servers whose working directory is not "/".
+func resolveListDirectory(wd, dir string) string {
+	switch dir {
+	case "", ".", "./":
+		if wd == "" || wd == "." {
+			return dir
+		}
+		return wd
+	}
+	if strings.HasPrefix(dir, "/") {
+		return dir
+	}
+	if wd == "" || wd == "." {
+		return dir
+	}
+	return path.Join(wd, dir)
+}
+
+// rebaseListResults rewrites paths from searchDir back into the style of the
+// directory the caller passed to ListFiles.
+func rebaseListResults(files []string, searchDir, inputDir string) []string {
+	if len(files) == 0 || searchDir == inputDir {
+		return files
+	}
+
+	if searchDir != "/" {
+		searchDir = strings.TrimSuffix(searchDir, "/")
+	}
+	inputPrefix := strings.TrimSuffix(inputDir, "/")
+	inputPrefix = strings.TrimPrefix(inputPrefix, "./")
+	relativeInput := inputPrefix == "" || inputPrefix == "."
+
+	out := make([]string, 0, len(files))
+	for _, file := range files {
+		rest := file
+		if searchDir == "/" {
+			rest = strings.TrimPrefix(file, "/")
+		} else if searchDir != "" {
+			rest = strings.TrimPrefix(file, searchDir)
+			rest = strings.TrimPrefix(rest, "/")
+		}
+		switch {
+		case relativeInput:
+			out = append(out, rest)
+		case inputDir == "/":
+			if !strings.HasPrefix(rest, "/") {
+				rest = "/" + rest
+			}
+			out = append(out, rest)
+		default:
+			out = append(out, inputPrefix+"/"+rest)
+		}
+	}
+	return out
+}
+
+func (c *client) listFilesAt(dir string) ([]string, error) {
+	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
 
 	wd := "."
 	switch {
@@ -457,6 +561,10 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		}
 	case pattern != "":
 		pattern = "[/?]" + pattern + "/*"
+		conn, err := c.connection()
+		if err = c.clearConnectionOnError(err); err != nil {
+			return nil, err
+		}
 		wd, err = conn.Getwd()
 		if err = c.clearConnectionOnError(err); err != nil {
 			return nil, err
@@ -464,7 +572,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	}
 
 	var filenames []string
-	err = c.walkNoLock(wd, func(path string, d fs.DirEntry, err error) error {
+	err := c.walkNoLock(wd, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -492,7 +600,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		return err
 	})
 	if err != nil {
-		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
+		return nil, err
 	}
 	return filenames, nil
 }
