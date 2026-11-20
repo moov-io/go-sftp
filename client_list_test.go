@@ -1,10 +1,54 @@
 package go_sftp
 
 import (
+	"path"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestListRequiresWorkingDirectoryJoin(t *testing.T) {
+	require.False(t, listRequiresWorkingDirectoryJoin(""))
+	require.False(t, listRequiresWorkingDirectoryJoin("."))
+	require.False(t, listRequiresWorkingDirectoryJoin("./"))
+	require.False(t, listRequiresWorkingDirectoryJoin("/"))
+	require.False(t, listRequiresWorkingDirectoryJoin("/outbox"))
+	require.False(t, listRequiresWorkingDirectoryJoin("/outbox/"))
+	require.True(t, listRequiresWorkingDirectoryJoin("outbox"))
+	require.True(t, listRequiresWorkingDirectoryJoin("outbox/"))
+	require.True(t, listRequiresWorkingDirectoryJoin("./outbox"))
+	require.True(t, listRequiresWorkingDirectoryJoin("./Watchlist Review/"))
+}
+
+func TestWorkingDirectoryRequiresJoin(t *testing.T) {
+	require.False(t, workingDirectoryRequiresJoin(""))
+	require.False(t, workingDirectoryRequiresJoin("."))
+	require.False(t, workingDirectoryRequiresJoin("/"))
+	require.False(t, workingDirectoryRequiresJoin("/."))
+	require.True(t, workingDirectoryRequiresJoin("/home/user"))
+	require.True(t, workingDirectoryRequiresJoin("/home/user/"))
+}
+
+func TestEscapeGlob(t *testing.T) {
+	pattern := "[/?]" + escapeGlob("home/user[1]/outbox") + "/*"
+	ok, err := path.Match(strings.ToLower(pattern), strings.ToLower("/home/user[1]/outbox/ppd.ach"))
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	unescaped := "[/?]home/user[1]/outbox/*"
+	ok, err = path.Match(strings.ToLower(unescaped), strings.ToLower("/home/user[1]/outbox/ppd.ach"))
+	require.NoError(t, err)
+	require.False(t, ok)
+}
+
+func TestListFilesPatternIsPOSIX(t *testing.T) {
+	cleaned := path.Clean(strings.TrimPrefix("/home/user/outbox", "/"))
+	pattern := "[/?]" + escapeGlob(cleaned) + "/*"
+	ok, err := path.Match(strings.ToLower(pattern), "/home/user/outbox/ppd.ach")
+	require.NoError(t, err)
+	require.True(t, ok)
+}
 
 func TestResolveListDirectory(t *testing.T) {
 	tests := []struct {

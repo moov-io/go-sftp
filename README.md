@@ -91,7 +91,7 @@ type Client interface {
 }
 ```
 
-`ListFiles` returns the files in `dir` (not subdirectories; use `Walk` for a recursive listing). Relative directories are resolved against the SFTP working directory, so `ListFiles("outbox")` works on servers that are not chrooted to `/`. Returned paths use the same style as `dir` (relative or absolute).
+`ListFiles` returns the files in `dir` (not subdirectories; use `Walk` for a recursive listing). Named relative directories such as `outbox` are resolved against the SFTP working directory when it is not `/`, so they work on servers that are not chrooted to `/`. Listings of `.`, the empty path, and absolute paths keep the previous path spelling. Returned paths use the same style as `dir` (relative or absolute).
 
 `Delete` is idempotent: it returns nil if the file does not exist.
 

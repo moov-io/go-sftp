@@ -55,6 +55,10 @@ func TestListFilesRelativeWorkingDirectory(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"root.txt"}, files)
 
+	files, err = client.ListFiles(".")
+	require.NoError(t, err)
+	require.Equal(t, []string{"root.txt"}, files)
+
 	file, err := client.Open("outbox/ppd.ach")
 	require.NoError(t, err)
 	require.Equal(t, "outbox/ppd.ach", file.Filename)

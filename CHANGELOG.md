@@ -1,3 +1,13 @@
+## v0.16.4 (Unreleased)
+
+IMPROVEMENTS
+
+- fix: default MaxConnections to 1 when it is zero or negative
+- fix: join named relative ListFiles directories with Getwd when the server is not chrooted to /
+- fix: match SFTP listing paths with path.Match so listings stay POSIX on Windows
+- fix: align MockClient Open Filename, ModTime, and missing Delete with the real client
+- docs: add a quick start and host-key guidance
+
 ## v0.16.3 (Released 2026-11-18)
 
 IMPROVEMENTS

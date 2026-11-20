@@ -461,15 +461,24 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 // Use Walk to traverse a tree recursively.
 //
 // Paths are returned in the same style as dir: an absolute dir yields absolute
-// paths, and a relative dir yields relative paths. Relative directories are
-// resolved against the SFTP working directory, so ListFiles("outbox") works
-// on servers that are not chrooted to /.
+// paths, and a relative dir yields relative paths. Named relative directories
+// (for example "outbox") are joined with the SFTP working directory only when
+// that directory is not "/". Listings of ".", "", and absolute paths keep the
+// previous walk/glob path so cwd listings do not change spelling.
 //
 // Paths are matched in case-insensitive comparisons, but results are returned exactly as they
 // appear on the server.
 func (c *client) ListFiles(dir string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if !listRequiresWorkingDirectoryJoin(dir) {
+		filenames, err := c.listFilesAt(dir)
+		if err != nil {
+			return nil, fmt.Errorf("listing %s failed: %w", dir, err)
+		}
+		return filenames, nil
+	}
 
 	conn, err := c.connection()
 	if err = c.clearConnectionOnError(err); err != nil {
@@ -481,12 +490,36 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		return nil, err
 	}
 
+	if !workingDirectoryRequiresJoin(wd) {
+		filenames, err := c.listFilesAt(dir)
+		if err != nil {
+			return nil, fmt.Errorf("listing %s failed: %w", dir, err)
+		}
+		return filenames, nil
+	}
+
 	searchDir := resolveListDirectory(wd, dir)
 	filenames, err := c.listFilesAt(searchDir)
 	if err != nil {
 		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
 	}
 	return rebaseListResults(filenames, wd, searchDir, dir), nil
+}
+
+func listRequiresWorkingDirectoryJoin(dir string) bool {
+	switch path.Clean(dir) {
+	case ".", "/":
+		return false
+	}
+	return !strings.HasPrefix(dir, "/")
+}
+
+func workingDirectoryRequiresJoin(wd string) bool {
+	switch path.Clean(wd) {
+	case "", ".", "/":
+		return false
+	}
+	return true
 }
 
 // resolveListDirectory joins a relative dir with the SFTP working directory
@@ -529,20 +562,23 @@ func rebaseListResults(files []string, wd, searchDir, inputDir string) []string 
 }
 
 func (c *client) listFilesAt(dir string) ([]string, error) {
-	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
+	cleaned := path.Clean(strings.TrimPrefix(dir, "/"))
+	pattern := cleaned
+	indexPrefix := ""
 
 	wd := "."
 	switch {
 	case dir == "/":
 		pattern = "*"
-	case pattern == ".":
+	case cleaned == ".":
 		if dir == "" {
 			pattern = "*"
 		} else {
-			pattern = filepath.Join(dir, "*")
+			pattern = path.Join(dir, "*")
 		}
-	case pattern != "":
-		pattern = "[/?]" + pattern + "/*"
+	case cleaned != "":
+		indexPrefix = cleaned + "/"
+		pattern = "[/?]" + escapeGlob(cleaned) + "/*"
 		conn, err := c.connection()
 		if err = c.clearConnectionOnError(err); err != nil {
 			return nil, err
@@ -554,7 +590,7 @@ func (c *client) listFilesAt(dir string) ([]string, error) {
 	}
 
 	var filenames []string
-	err := c.walkNoLock(wd, func(path string, d fs.DirEntry, err error) error {
+	err := c.walkNoLock(wd, func(remotePath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -563,21 +599,21 @@ func (c *client) listFilesAt(dir string) ([]string, error) {
 		}
 
 		// Check if the server's path matches what we're searching for in a case-insensitive comparison.
-		matches, err := filepath.Match(strings.ToLower(pattern), strings.ToLower(path))
+		matches, err := path.Match(strings.ToLower(pattern), strings.ToLower(remotePath))
 		if matches && err == nil {
-			// Return the path with exactly the case on the server.
-			trimmedPattern := strings.TrimPrefix(strings.TrimSuffix(pattern, "*"), "[/?]")
-			idx := strings.Index(strings.ToLower(path), strings.ToLower(trimmedPattern))
-			if idx > -1 {
-				path = path[idx:]
-				if strings.HasPrefix(dir, "/") && !strings.HasPrefix(path, "/") {
-					path = "/" + path
+			out := remotePath
+			if indexPrefix != "" {
+				idx := strings.Index(strings.ToLower(remotePath), strings.ToLower(indexPrefix))
+				if idx > -1 {
+					out = remotePath[idx:]
+				} else {
+					out = path.Join(dir, path.Base(remotePath))
 				}
-				filenames = append(filenames, path)
-			} else {
-				// Fallback to Go logic of presenting the path
-				filenames = append(filenames, filepath.Join(dir, filepath.Base(path)))
 			}
+			if strings.HasPrefix(dir, "/") && !strings.HasPrefix(out, "/") {
+				out = "/" + out
+			}
+			filenames = append(filenames, out)
 		}
 		return err
 	})
@@ -585,6 +621,19 @@ func (c *client) listFilesAt(dir string) ([]string, error) {
 		return nil, err
 	}
 	return filenames, nil
+}
+
+func escapeGlob(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '*', '?', '[', '\\':
+			b.WriteByte('\\')
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }
 
 // Reader will open the file at path and provide a reader to access its contents.
