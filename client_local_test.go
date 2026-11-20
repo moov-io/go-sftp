@@ -13,6 +13,7 @@ import (
 
 	"github.com/moov-io/base/log"
 	gosftp "github.com/moov-io/go-sftp"
+	pkgsftp "github.com/pkg/sftp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -209,5 +210,125 @@ func TestClientLocal_ListFilePathIsEmpty(t *testing.T) {
 
 	files, err := client.ListFiles("outbox/ppd.ach")
 	require.NoError(t, err)
+	require.Empty(t, files)
+}
+
+func TestClientLocal_CaseSiblingDirs(t *testing.T) {
+	root := t.TempDir()
+	names := []string{"Inbound", "inbound", "INBOUND", "inBound"}
+	for _, n := range names {
+		dir := filepath.Join(root, "x", n)
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, n+".ach"), []byte(n), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "same.ach"), []byte("from-"+n), 0o644))
+	}
+	ents, err := os.ReadDir(filepath.Join(root, "x"))
+	require.NoError(t, err)
+	if len(ents) < 2 {
+		t.Skip("case-insensitive FS")
+	}
+
+	client := newLocalClient(t, root, nil)
+	for _, n := range names {
+		for _, dir := range []string{filepath.ToSlash(filepath.Join(root, "x", n)), "x/" + n} {
+			files, err := client.ListFiles(dir)
+			require.NoError(t, err, "ListFiles(%q)", dir)
+			require.Len(t, files, 2, "ListFiles(%q) = %v", dir, files)
+			for _, f := range files {
+				require.Equal(t, n, path.Base(path.Dir(f)), "ListFiles(%q) returned %q", dir, f)
+			}
+
+			var same string
+			for _, f := range files {
+				if path.Base(f) == "same.ach" {
+					same = f
+				}
+			}
+			require.NotEmpty(t, same, "ListFiles(%q) missing same.ach in %v", dir, files)
+
+			file, err := client.Open(same)
+			require.NoError(t, err, "Open(%q)", same)
+			body, err := io.ReadAll(file.Contents)
+			require.NoError(t, err)
+			require.NoError(t, file.Close())
+			require.Equal(t, "from-"+n, string(body), "Open(%q) after ListFiles(%q)", same, dir)
+		}
+	}
+}
+
+func TestClientLocal_ListFilesRootAndSymlink(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "real"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "real", "a.ach"), []byte("a"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "top.txt"), []byte("t"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "afile"), []byte("t"), 0o644))
+	require.NoError(t, os.Symlink(filepath.Join(root, "real"), filepath.Join(root, "linked")))
+
+	client := newLocalClient(t, root, nil)
+
+	files, err := client.ListFiles("/")
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"/afile", "/linked", "/top.txt"}, files)
+
+	files, err = client.ListFiles("linked")
+	require.NoError(t, err)
+	require.Equal(t, []string{"linked/a.ach"}, files)
+
+	file, err := client.Open(files[0])
+	require.NoError(t, err)
+	body, err := io.ReadAll(file.Contents)
+	require.NoError(t, err)
+	require.NoError(t, file.Close())
+	require.Equal(t, "a", string(body))
+}
+
+func TestClientLocal_ReadDirFailureFallsBackToWalk(t *testing.T) {
+	handlers := pkgsftp.InMemHandler()
+	handlers.FileList = wrapFailureList(handlers.FileList)
+	addr, hostKey := startLocalRequestServer(t, handlers)
+
+	client, err := gosftp.NewClient(log.NewTestLogger(), &gosftp.ClientConfig{
+		Hostname:       addr,
+		Username:       "demo",
+		Password:       "password",
+		Timeout:        5 * time.Second,
+		MaxConnections: 1,
+		HostPublicKeys: []string{hostKey},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { client.Close() })
+
+	require.NoError(t, client.UploadFile("outbox/ppd.ach", io.NopCloser(strings.NewReader("ppd"))))
+
+	files, err := client.ListFiles("outbox")
+	require.NoError(t, err)
+	require.Equal(t, []string{"outbox/ppd.ach"}, files)
+
+	files, err = client.ListFiles("does-not-exist")
+	require.NoError(t, err)
+	require.Empty(t, files)
+}
+
+func TestClientLocal_GetwdJoinPropagatesError(t *testing.T) {
+	const startDir = "/data"
+	handlers := pkgsftp.InMemHandler()
+	handlers.FileList = wrapJoinFailList(handlers.FileList, startDir)
+	addr, hostKey := startLocalRequestServer(t, handlers, pkgsftp.WithStartDirectory(startDir))
+
+	client, err := gosftp.NewClient(log.NewTestLogger(), &gosftp.ClientConfig{
+		Hostname:       addr,
+		Username:       "demo",
+		Password:       "password",
+		Timeout:        5 * time.Second,
+		MaxConnections: 1,
+		HostPublicKeys: []string{hostKey},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { client.Close() })
+
+	require.NoError(t, client.UploadFile("/data/keep.txt", io.NopCloser(strings.NewReader("keep"))))
+
+	files, err := client.ListFiles("does-not-exist")
+	require.Error(t, err)
 	require.Empty(t, files)
 }
