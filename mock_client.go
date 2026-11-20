@@ -8,14 +8,11 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 )
 
-// MockClient is an in-process Client that stores files in a temporary
-// directory. It is intended for tests. NewMockClient requires a *testing.T.
 type MockClient struct {
 	root string
 
@@ -46,6 +43,8 @@ func (c *MockClient) Reader(path string) (*File, error) {
 	return c.Open(path)
 }
 
+// Open opens path under the mock root. Filename is the base name of path, not
+// the full path. ModTime is left as the zero time.
 func (c *MockClient) Open(path string) (*File, error) {
 	if c.Err != nil {
 		return nil, c.Err
@@ -54,28 +53,17 @@ func (c *MockClient) Open(path string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	info, statErr := file.Stat()
-	modTime := time.Time{}
-	if statErr == nil && info != nil {
-		modTime = info.ModTime()
-	}
+	_, name := filepath.Split(path)
 	return &File{
-		Filename: path,
+		Filename: name,
 		Contents: file,
-		ModTime:  modTime,
-		fileinfo: info,
 	}, nil
 }
 
+// Delete removes path. A missing file returns an error from os.Remove. Delete
+// does not check Err and does not treat a missing file as success.
 func (c *MockClient) Delete(path string) error {
-	if c.Err != nil {
-		return c.Err
-	}
-	err := os.Remove(filepath.Join(c.root, path))
-	if os.IsNotExist(err) {
-		return nil
-	}
-	return err
+	return os.Remove(filepath.Join(c.root, path))
 }
 
 func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
@@ -93,26 +81,23 @@ func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
 	return os.WriteFile(filepath.Join(c.root, path), bs, 0600)
 }
 
+// ListFiles returns names from os.ReadDir, including directories. MkdirAll
+// errors are ignored.
 func (c *MockClient) ListFiles(dir string) ([]string, error) {
 	if c.Err != nil {
 		return nil, c.Err
 	}
 
-	local := filepath.Join(c.root, filepath.FromSlash(dir))
-	if err := os.MkdirAll(local, 0777); err != nil {
-		return nil, err
-	}
+	os.MkdirAll(filepath.Join(c.root, dir), 0777)
 
-	fds, err := os.ReadDir(local)
+	fds, err := os.ReadDir(filepath.Join(c.root, dir))
 	if err != nil {
 		return nil, err
 	}
 	var out []string
-	for _, fd := range fds {
-		if fd.IsDir() {
-			continue
-		}
-		out = append(out, path.Join(dir, fd.Name()))
+	for i := range fds {
+		fd := filepath.Join(dir, strings.TrimPrefix(fds[i].Name(), c.root))
+		out = append(out, fd)
 	}
 	return out, nil
 }

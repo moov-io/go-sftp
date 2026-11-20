@@ -78,19 +78,19 @@ type client struct {
 // Client along with the error so later calls can retry. If cfg is nil, the
 // Client is nil.
 //
-// MaxConnections defaults to 1 when it is zero or negative. A nil logger is
-// allowed; pass a logger if you want connection and host-key warnings recorded
-// through moov-io/base. When host-key checking is skipped and logger is nil,
-// the warning is written to standard error.
+// MaxConnections must be >= 1. Zero or negative values make NewClient return
+// a non-nil Client and an error wrapping pkg/sftp's
+// "n must be greater or equal to 1" after a successful SSH connection.
+// The caller's ClientConfig is not mutated. A nil logger is allowed; pass a
+// logger if you want connection and host-key warnings recorded through
+// moov-io/base. When host-key checking is skipped, the warning is logged only
+// if logger is non-nil.
 func NewClient(logger log.Logger, cfg *ClientConfig) (Client, error) {
 	if cfg == nil {
 		return nil, errors.New("nil SFTP config")
 	}
 
 	cc := &client{cfg: *cfg, logger: logger}
-	if cc.cfg.MaxConnections <= 0 {
-		cc.cfg.MaxConnections = 1
-	}
 
 	conn, err := cc.connection()
 	cc.record(err) // track up metric for remote server
@@ -189,14 +189,14 @@ func (c *client) clearConnectionOnError(err error) error {
 	return err
 }
 
+// hostKeyCallback logs a one-time warning when host-key checking is skipped.
+// If logger is nil, the warning is not printed; there is no stderr fallback.
 var (
 	hostKeyCallbackOnce sync.Once
 	hostKeyCallback     = func(logger log.Logger) {
 		msg := "sftp: WARNING!!! Insecure default of skipping SFTP host key validation. Please set HostPublicKey(s)"
 		if logger != nil {
 			logger.Warn().Log(msg)
-		} else {
-			fmt.Fprintln(os.Stderr, msg)
 		}
 	}
 )
@@ -346,7 +346,7 @@ func (c *client) Close() error {
 	return nil
 }
 
-// Delete removes the file at path. If the file does not exist, Delete returns nil.
+// Delete removes path. If the file does not exist, Delete returns nil.
 func (c *client) Delete(path string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -457,341 +457,41 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 	return nil
 }
 
-// ListFiles returns the files in dir, not including files in subdirectories.
-// Use Walk to traverse a tree recursively.
+// ListFiles will return the paths of files within dir. Paths are returned as locations from dir,
+// so if dir is an absolute path the returned paths will be.
 //
-// Paths are returned in the same style as dir: an absolute dir yields absolute
-// paths, and a relative dir yields relative paths. ListFiles tries ReadDir
-// first (the server resolves relative paths against its working directory).
-// After a successful ReadDir, including an empty directory, file names are
-// joined onto the caller's dir spelling. Directory components are rewritten
-// only when the server reports an exact match, or a unique case-insensitive
-// match; if several directories differ only by case, the caller's spelling is
-// kept.
+// Paths are matched in case-insensitive comparisons, but results are returned exactly as they
+// appear on the server. On a case-sensitive server, listing one directory can therefore
+// include files from other directories that differ only by case.
 //
-// ListFiles("/") lists the working directory (with a "/" prefix) when Getwd is
-// not "/". It does not ReadDir the real filesystem root on a non-chroot server.
-// Listing a symlink to a directory follows the symlink and returns the files
-// inside it.
-//
-// If ReadDir fails after a live connection, ListFiles falls back to a
-// case-insensitive glob walk. A connection loss is returned as an error and is
-// not treated as a missing directory. When the walk is empty, a named relative
-// dir is joined with Getwd only if the working directory is not "/". Connection,
-// Getwd, and walk errors from that join are returned to the caller.
+// Named relative directories are resolved by walking from Getwd with a glob of the form
+// "[/?]<dir>/*". That listing is empty when Getwd is not "/". ListFiles("/") lists the
+// working directory (Walk of ".", pattern "*") and prefixes results with "/"; it does not
+// list the real filesystem root on a non-chroot server. Symlinked directories are not
+// followed (Walk uses Lstat).
 func (c *client) ListFiles(dir string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	filenames, err := c.readDirFiles(dir)
-	if err == nil {
-		return filenames, nil
-	}
-	if !shouldFallbackFromReadDir(err) {
-		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
-	}
+	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
 
-	filenames, err = c.listFilesAt(dir)
-	if err != nil {
-		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
-	}
-	if len(filenames) > 0 || !listRequiresWorkingDirectoryJoin(dir) {
-		return filenames, nil
-	}
-
-	conn, err := c.connection()
-	if err != nil {
-		if cerr := c.clearConnectionOnError(err); cerr != nil {
-			err = cerr
-		}
-		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
-	}
-	wd, err := conn.Getwd()
-	if err != nil {
-		if cerr := c.clearConnectionOnError(err); cerr != nil {
-			err = cerr
-		}
-		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
-	}
-	if !workingDirectoryRequiresJoin(wd) {
-		return filenames, nil
-	}
-
-	searchDir := resolveListDirectory(wd, dir)
-	if searchDir == "" || searchDir == dir {
-		return filenames, nil
-	}
-	joined, err := c.listFilesAt(searchDir)
-	if err != nil {
-		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
-	}
-	if len(joined) == 0 {
-		return filenames, nil
-	}
-	return rebaseListResults(joined, wd, searchDir, dir), nil
-}
-
-func listRequiresWorkingDirectoryJoin(dir string) bool {
-	switch path.Clean(dir) {
-	case ".", "/":
-		return false
-	}
-	return !strings.HasPrefix(dir, "/")
-}
-
-func workingDirectoryRequiresJoin(wd string) bool {
-	switch path.Clean(wd) {
-	case "", ".", "/":
-		return false
-	}
-	return true
-}
-
-func (c *client) readDirFiles(dir string) ([]string, error) {
 	conn, err := c.connection()
 	if err = c.clearConnectionOnError(err); err != nil {
 		return nil, err
 	}
 
-	listDir := dir
-	switch dir {
-	case "", ".", "./":
-		listDir = "."
-	case "/":
-		wd, wdErr := conn.Getwd()
-		if wdErr != nil {
-			return nil, c.readDirError(wdErr)
-		}
-		if path.Clean(wd) != "/" {
-			// Non-chroot servers: list the working directory, matching the
-			// previous glob of Getwd, instead of the real filesystem root.
-			listDir = "."
-		}
-	}
-
-	infos, err := conn.ReadDir(listDir)
-	if err != nil {
-		return nil, c.readDirError(err)
-	}
-
-	// Join file names onto the caller's dir. canonicalDir may rewrite a
-	// component to an exact or unique case-insensitive server name.
-	prefix := dir
-	switch dir {
-	case "", ".", "./", "/":
-	default:
-		prefix = canonicalDir(conn, dir)
-	}
-
-	var filenames []string
-	for _, info := range infos {
-		if info == nil || info.IsDir() {
-			continue
-		}
-		name := info.Name()
-		var out string
-		switch dir {
-		case "", ".", "./":
-			out = name
-		case "/":
-			out = "/" + name
-		default:
-			out = path.Join(prefix, name)
-		}
-		if strings.HasPrefix(dir, "/") && !strings.HasPrefix(out, "/") {
-			out = "/" + out
-		}
-		filenames = append(filenames, out)
-	}
-	return filenames, nil
-}
-
-// readDirError runs clearConnectionOnError and keeps the original ReadDir
-// error for fallback, except a dead session is returned as a hard error.
-func (c *client) readDirError(err error) error {
-	orig := err
-	cleared := c.clearConnectionOnError(err)
-	if isSessionDead(orig) {
-		if cleared != nil {
-			return cleared
-		}
-		return orig
-	}
-	return orig
-}
-
-// canonicalDir rewrites dir using names the server reports for each component.
-// An exact match wins. A case-insensitive match is used only when it is unique.
-// If several directories differ only by case, the caller's component is kept.
-func canonicalDir(conn *sftp.Client, dir string) string {
-	leading := strings.HasPrefix(dir, "/")
-	trim := strings.Trim(path.Clean(dir), "/")
-	if trim == "" || trim == "." {
-		return dir
-	}
-	parts := strings.Split(trim, "/")
-	parent := "."
-	if leading {
-		parent = "/"
-	}
-	var rebuilt []string
-	for _, part := range parts {
-		actual := part
-		infos, err := conn.ReadDir(parent)
-		if err == nil {
-			actual = matchDirName(part, infos)
-		}
-		rebuilt = append(rebuilt, actual)
-		if parent == "/" {
-			parent = "/" + actual
-		} else if parent == "." {
-			parent = actual
-		} else {
-			parent = path.Join(parent, actual)
-		}
-	}
-	out := path.Join(rebuilt...)
-	if leading && !strings.HasPrefix(out, "/") {
-		out = "/" + out
-	}
-	return out
-}
-
-func matchDirName(part string, infos []os.FileInfo) string {
-	var fold string
-	foldCount := 0
-	for _, info := range infos {
-		if info == nil || !info.IsDir() {
-			continue
-		}
-		name := info.Name()
-		if name == part {
-			return part
-		}
-		if strings.EqualFold(name, part) {
-			foldCount++
-			if foldCount == 1 {
-				fold = name
-			}
-		}
-	}
-	if foldCount == 1 {
-		return fold
-	}
-	return part
-}
-
-func isSessionDead(err error) bool {
-	if err == nil {
-		return false
-	}
-	if errors.Is(err, io.EOF) ||
-		errors.Is(err, io.ErrClosedPipe) ||
-		errors.Is(err, sftp.ErrSSHFxEOF) ||
-		errors.Is(err, sftp.ErrSSHFxNoConnection) ||
-		errors.Is(err, sftp.ErrSSHFxConnectionLost) {
-		return true
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "connection lost") ||
-		strings.Contains(msg, "broken pipe") ||
-		strings.Contains(msg, "connection reset") ||
-		strings.Contains(msg, "use of closed network connection")
-}
-
-func shouldFallbackFromReadDir(err error) bool {
-	if err == nil || isSessionDead(err) {
-		return false
-	}
-	msg := err.Error()
-	if strings.Contains(msg, "sftpConnect") ||
-		strings.Contains(msg, "unable to establish ssh") ||
-		strings.Contains(msg, "nil client") {
-		return false
-	}
-	return true
-}
-
-func isNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-	if os.IsNotExist(err) || errors.Is(err, fs.ErrNotExist) || errors.Is(err, sftp.ErrSSHFxNoSuchFile) {
-		return true
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "file does not exist") || strings.Contains(msg, "no such file")
-}
-
-func isNotDir(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "not a directory") || strings.Contains(msg, "not a dir")
-}
-
-// resolveListDirectory joins a relative dir with the SFTP working directory
-// so listings work on servers whose working directory is not "/".
-func resolveListDirectory(wd, dir string) string {
-	switch dir {
-	case "", ".", "./":
-		if wd == "" || wd == "." {
-			return dir
-		}
-		return wd
-	}
-	if strings.HasPrefix(dir, "/") {
-		return dir
-	}
-	if wd == "" || wd == "." {
-		return dir
-	}
-	return path.Join(wd, dir)
-}
-
-// rebaseListResults rewrites paths found under searchDir back into the style
-// of the directory the caller passed to ListFiles. Absolute inputs are returned
-// unchanged. Relative inputs are returned relative to the working directory wd,
-// keeping the exact case the server reported.
-func rebaseListResults(files []string, wd, searchDir, inputDir string) []string {
-	if len(files) == 0 || searchDir == inputDir || strings.HasPrefix(inputDir, "/") {
-		return files
-	}
-
-	prefix := strings.TrimSuffix(wd, "/") + "/"
-	out := make([]string, 0, len(files))
-	for _, file := range files {
-		if len(file) >= len(prefix) && strings.EqualFold(file[:len(prefix)], prefix) {
-			file = file[len(prefix):]
-		}
-		out = append(out, file)
-	}
-	return out
-}
-
-func (c *client) listFilesAt(dir string) ([]string, error) {
-	cleaned := path.Clean(strings.TrimPrefix(dir, "/"))
-	pattern := cleaned
-	indexPrefix := ""
-
 	wd := "."
 	switch {
 	case dir == "/":
 		pattern = "*"
-	case cleaned == ".":
+	case pattern == ".":
 		if dir == "" {
 			pattern = "*"
 		} else {
-			pattern = path.Join(dir, "*")
+			pattern = filepath.Join(dir, "*")
 		}
-	case cleaned != "":
-		indexPrefix = cleaned + "/"
-		pattern = "[/?]" + escapeGlob(cleaned) + "/*"
-		conn, err := c.connection()
-		if err = c.clearConnectionOnError(err); err != nil {
-			return nil, err
-		}
+	case pattern != "":
+		pattern = "[/?]" + pattern + "/*"
 		wd, err = conn.Getwd()
 		if err = c.clearConnectionOnError(err); err != nil {
 			return nil, err
@@ -799,7 +499,7 @@ func (c *client) listFilesAt(dir string) ([]string, error) {
 	}
 
 	var filenames []string
-	err := c.walkNoLock(wd, func(remotePath string, d fs.DirEntry, err error) error {
+	err = c.walkNoLock(wd, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -808,41 +508,28 @@ func (c *client) listFilesAt(dir string) ([]string, error) {
 		}
 
 		// Check if the server's path matches what we're searching for in a case-insensitive comparison.
-		matches, err := path.Match(strings.ToLower(pattern), strings.ToLower(remotePath))
+		matches, err := filepath.Match(strings.ToLower(pattern), strings.ToLower(path))
 		if matches && err == nil {
-			out := remotePath
-			if indexPrefix != "" {
-				idx := strings.Index(strings.ToLower(remotePath), strings.ToLower(indexPrefix))
-				if idx > -1 {
-					out = remotePath[idx:]
-				} else {
-					out = path.Join(dir, path.Base(remotePath))
+			// Return the path with exactly the case on the server.
+			trimmedPattern := strings.TrimPrefix(strings.TrimSuffix(pattern, "*"), "[/?]")
+			idx := strings.Index(strings.ToLower(path), strings.ToLower(trimmedPattern))
+			if idx > -1 {
+				path = path[idx:]
+				if strings.HasPrefix(dir, "/") && !strings.HasPrefix(path, "/") {
+					path = "/" + path
 				}
+				filenames = append(filenames, path)
+			} else {
+				// Fallback to Go logic of presenting the path
+				filenames = append(filenames, filepath.Join(dir, filepath.Base(path)))
 			}
-			if strings.HasPrefix(dir, "/") && !strings.HasPrefix(out, "/") {
-				out = "/" + out
-			}
-			filenames = append(filenames, out)
 		}
 		return err
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
 	}
 	return filenames, nil
-}
-
-func escapeGlob(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	for i := 0; i < len(s); i++ {
-		switch s[i] {
-		case '*', '?', '[', '\\':
-			b.WriteByte('\\')
-		}
-		b.WriteByte(s[i])
-	}
-	return b.String()
 }
 
 // Reader will open the file at path and provide a reader to access its contents.

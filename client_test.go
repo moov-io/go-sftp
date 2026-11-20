@@ -124,6 +124,7 @@ func TestClientErr(t *testing.T) {
 				Username:       "demo",
 				Password:       "password",
 				Timeout:        5 * time.Second,
+				MaxConnections: 1,
 				HostPublicKeys: []string{hostKey},
 			}
 			if mutate != nil {
@@ -143,34 +144,26 @@ func TestClientErr(t *testing.T) {
 		}
 
 		t.Run("max connections zero", func(t *testing.T) {
-			client := requireClient(t, func(cfg *sftp.ClientConfig) {
+			// MaxConnections 0 makes pkg/sftp reject the client after SSH connects.
+			// Intentionally preserved for compatibility.
+			client, err := connect(t, func(cfg *sftp.ClientConfig) {
 				cfg.MaxConnections = 0
 				cfg.PacketSize = 0
 			})
-			require.NoError(t, client.Ping())
-			files, err := client.ListFiles(".")
-			require.NoError(t, err)
-			require.Equal(t, []string{"root.txt"}, files)
-
-			file, err := client.Open("root.txt")
-			require.NoError(t, err)
-			body, err := io.ReadAll(file.Contents)
-			require.NoError(t, err)
-			require.Equal(t, "ok", string(body))
-			require.NoError(t, file.Close())
+			require.Error(t, err)
+			require.NotNil(t, client)
+			require.ErrorContains(t, err, "n must be greater or equal to 1")
+			require.NoError(t, client.Close())
 		})
 
 		t.Run("max connections negative", func(t *testing.T) {
-			client := requireClient(t, func(cfg *sftp.ClientConfig) {
+			client, err := connect(t, func(cfg *sftp.ClientConfig) {
 				cfg.MaxConnections = -3
 			})
-			require.NoError(t, client.Ping())
-			file, err := client.Open("root.txt")
-			require.NoError(t, err)
-			body, err := io.ReadAll(file.Contents)
-			require.NoError(t, err)
-			require.Equal(t, "ok", string(body))
-			require.NoError(t, file.Close())
+			require.Error(t, err)
+			require.NotNil(t, client)
+			require.ErrorContains(t, err, "n must be greater or equal to 1")
+			require.NoError(t, client.Close())
 		})
 
 		t.Run("does not mutate caller config", func(t *testing.T) {
@@ -184,7 +177,8 @@ func TestClientErr(t *testing.T) {
 				HostPublicKeys: []string{hostKey},
 			}
 			client, err := sftp.NewClient(log.NewTestLogger(), cfg)
-			require.NoError(t, err)
+			require.Error(t, err)
+			require.NotNil(t, client)
 			t.Cleanup(func() {
 				require.NoError(t, client.Close())
 			})
@@ -215,7 +209,7 @@ func TestClientErr(t *testing.T) {
 				Username:       "demo",
 				Password:       "password",
 				Timeout:        5 * time.Second,
-				MaxConnections: 0,
+				MaxConnections: 1,
 				HostPublicKeys: []string{hostKey},
 			})
 			require.NoError(t, err)
@@ -287,7 +281,7 @@ func TestClientErr(t *testing.T) {
 			Hostname:         addr,
 			Username:         "demo",
 			Timeout:          5 * time.Second,
-			MaxConnections:   0,
+			MaxConnections:   1,
 			HostPublicKeys:   []string{hostKey},
 			ClientPrivateKey: privateKeyPEM(t, key, ""),
 		})
@@ -312,6 +306,7 @@ func TestClientErr(t *testing.T) {
 			Hostname:         addr,
 			Username:         "demo",
 			Timeout:          5 * time.Second,
+			MaxConnections:   1,
 			HostPublicKeys:   []string{hostKey},
 			ClientPrivateKey: base64.StdEncoding.EncodeToString([]byte(pem)),
 		})
@@ -332,6 +327,7 @@ func TestClientErr(t *testing.T) {
 			Hostname:                 addr,
 			Username:                 "demo",
 			Timeout:                  5 * time.Second,
+			MaxConnections:           1,
 			HostPublicKeys:           []string{hostKey},
 			ClientPrivateKey:         privateKeyPEM(t, key, "passphrase"),
 			ClientPrivateKeyPassword: "passphrase",
@@ -361,7 +357,7 @@ func TestClientErr(t *testing.T) {
 			Username:       "demo",
 			Password:       "password",
 			Timeout:        5 * time.Second,
-			MaxConnections: 0,
+			MaxConnections: 1,
 			HostPublicKeys: []string{hostKey},
 		})
 		require.Error(t, err)

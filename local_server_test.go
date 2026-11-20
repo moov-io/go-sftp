@@ -6,73 +6,14 @@ import (
 	"crypto/rsa"
 	"encoding/pem"
 	"fmt"
-	"io"
 	"net"
-	"os"
-	"path"
-	"path/filepath"
-	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
-	"github.com/moov-io/base/log"
-	gosftp "github.com/moov-io/go-sftp"
 	pkgsftp "github.com/pkg/sftp"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
 )
-
-func TestListFilesRelativeWorkingDirectory(t *testing.T) {
-	root := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(root, "outbox"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "outbox", "ppd.ach"), []byte("ppd"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "root.txt"), []byte("root"), 0o644))
-
-	addr, hostKey := startLocalSFTPServer(t, root)
-
-	client, err := gosftp.NewClient(log.NewTestLogger(), &gosftp.ClientConfig{
-		Hostname:       addr,
-		Username:       "demo",
-		Password:       "password",
-		Timeout:        5 * time.Second,
-		MaxConnections: 0, // should default to 1
-		HostPublicKeys: []string{hostKey},
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, client.Close())
-	})
-
-	files, err := client.ListFiles("outbox")
-	require.NoError(t, err)
-	require.Equal(t, []string{"outbox/ppd.ach"}, files)
-
-	files, err = client.ListFiles("outbox/")
-	require.NoError(t, err)
-	require.Equal(t, []string{"outbox/ppd.ach"}, files)
-
-	files, err = client.ListFiles("./outbox")
-	require.NoError(t, err)
-	require.Equal(t, []string{"outbox/ppd.ach"}, files)
-
-	files, err = client.ListFiles("")
-	require.NoError(t, err)
-	require.Equal(t, []string{"root.txt"}, files)
-
-	files, err = client.ListFiles(".")
-	require.NoError(t, err)
-	require.Equal(t, []string{"root.txt"}, files)
-
-	file, err := client.Open("outbox/ppd.ach")
-	require.NoError(t, err)
-	require.Equal(t, "outbox/ppd.ach", file.Filename)
-	require.False(t, file.ModTime.IsZero())
-	body, err := io.ReadAll(file.Contents)
-	require.NoError(t, err)
-	require.Equal(t, "ppd", string(body))
-	require.NoError(t, file.Close())
-}
 
 func newHostSigner(t *testing.T) ssh.Signer {
 	t.Helper()
@@ -171,141 +112,6 @@ func serveLocalSFTPWhen(t *testing.T, listener net.Listener, signer ssh.Signer, 
 		listener.Close()
 		<-done
 	})
-}
-
-func startLocalRequestServer(t *testing.T, handlers pkgsftp.Handlers, opts ...pkgsftp.RequestServerOption) (addr, hostKey string) {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	signer := newHostSigner(t)
-	config := &ssh.ServerConfig{
-		PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
-			if c.User() == "demo" && string(pass) == "password" {
-				return nil, nil
-			}
-			return nil, fmt.Errorf("invalid credentials")
-		},
-	}
-	config.AddHostKey(signer)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for {
-			nConn, err := listener.Accept()
-			if err != nil {
-				return
-			}
-			go handleLocalRequestSFTP(nConn, config, handlers, opts...)
-		}
-	}()
-	t.Cleanup(func() {
-		listener.Close()
-		<-done
-	})
-	return listener.Addr().String(), string(ssh.MarshalAuthorizedKey(signer.PublicKey()))
-}
-
-func handleLocalRequestSFTP(nConn net.Conn, config *ssh.ServerConfig, handlers pkgsftp.Handlers, opts ...pkgsftp.RequestServerOption) {
-	conn, chans, reqs, err := ssh.NewServerConn(nConn, config)
-	if err != nil {
-		nConn.Close()
-		return
-	}
-	defer conn.Close()
-	go ssh.DiscardRequests(reqs)
-
-	for newChannel := range chans {
-		if newChannel.ChannelType() != "session" {
-			newChannel.Reject(ssh.UnknownChannelType, "unsupported")
-			continue
-		}
-		ch, reqs, err := newChannel.Accept()
-		if err != nil {
-			return
-		}
-		go func() {
-			defer ch.Close()
-			for req := range reqs {
-				if req.Type == "subsystem" && len(req.Payload) >= 4 && string(req.Payload[4:]) == "sftp" {
-					req.Reply(true, nil)
-					server := pkgsftp.NewRequestServer(ch, handlers, opts...)
-					_ = server.Serve()
-					return
-				}
-				if req.WantReply {
-					req.Reply(false, nil)
-				}
-			}
-		}()
-	}
-}
-
-// failureListHandler returns SSH_FX_FAILURE for OpenDir/List of a missing path.
-type failureListHandler struct {
-	inner pkgsftp.FileLister
-	lstat pkgsftp.LstatFileLister
-}
-
-func (h *failureListHandler) Filelist(r *pkgsftp.Request) (pkgsftp.ListerAt, error) {
-	lister, err := h.inner.Filelist(r)
-	if err != nil && r.Method == "List" && os.IsNotExist(err) {
-		return nil, pkgsftp.ErrSSHFxFailure
-	}
-	return lister, err
-}
-
-func (h *failureListHandler) Lstat(r *pkgsftp.Request) (pkgsftp.ListerAt, error) {
-	if h.lstat != nil {
-		return h.lstat.Lstat(r)
-	}
-	return h.inner.Filelist(r)
-}
-
-// joinFailListHandler fails Getwd (RealPath) after the working directory has
-// been listed once, so ListFiles' Getwd-join branch sees a connection error.
-type joinFailListHandler struct {
-	inner      pkgsftp.FileLister
-	lstat      pkgsftp.LstatFileLister
-	startDir   string
-	listedRoot atomic.Bool
-}
-
-func (h *joinFailListHandler) Filelist(r *pkgsftp.Request) (pkgsftp.ListerAt, error) {
-	if r.Method == "List" && (r.Filepath == h.startDir || r.Filepath == ".") {
-		h.listedRoot.Store(true)
-	}
-	return h.inner.Filelist(r)
-}
-
-func (h *joinFailListHandler) Lstat(r *pkgsftp.Request) (pkgsftp.ListerAt, error) {
-	if h.lstat != nil {
-		return h.lstat.Lstat(r)
-	}
-	return h.inner.Filelist(r)
-}
-
-func (h *joinFailListHandler) RealPath(p string) (string, error) {
-	if h.listedRoot.Load() {
-		return "", pkgsftp.ErrSSHFxConnectionLost
-	}
-	if p == "" || p == "." {
-		return h.startDir, nil
-	}
-	if strings.HasPrefix(p, "/") {
-		return path.Clean(p), nil
-	}
-	return path.Join(h.startDir, p), nil
-}
-
-func wrapFailureList(inner pkgsftp.FileLister) pkgsftp.FileLister {
-	lstat, _ := inner.(pkgsftp.LstatFileLister)
-	return &failureListHandler{inner: inner, lstat: lstat}
-}
-
-func wrapJoinFailList(inner pkgsftp.FileLister, startDir string) pkgsftp.FileLister {
-	lstat, _ := inner.(pkgsftp.LstatFileLister)
-	return &joinFailListHandler{inner: inner, lstat: lstat, startDir: startDir}
 }
 
 func handleLocalSFTP(nConn net.Conn, config *ssh.ServerConfig, workDir string) {
