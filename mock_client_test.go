@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -24,6 +25,7 @@ func TestMockClient(t *testing.T) {
 	_, err := client.Open("/missing.txt")
 	require.Error(t, err)
 
+	// MockClient Delete of a missing file errors. This differs from the real client.
 	err = client.Delete("/missing.txt")
 	require.Error(t, err)
 
@@ -60,6 +62,8 @@ func TestMockClient_ListAndOpenFiles(t *testing.T) {
 		found, err := client.Open(file)
 		require.NoError(t, err)
 		require.NotNil(t, found)
+		// MockClient Open Filename is the base name, unlike the real client.
+		require.Equal(t, filepath.Base(file), found.Filename)
 
 		contents, err := io.ReadAll(found.Contents)
 		require.NoError(t, err)
@@ -88,4 +92,15 @@ func TestMockClient_ListAndOpenFiles(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Contains(t, walkedFiles, "f1.txt", "f2.txt")
+}
+
+func TestMockClient_ListFilesIncludesDirectories(t *testing.T) {
+	// MockClient ListFiles includes directory entries. This differs from the real client.
+	client := sftp.NewMockClient(t)
+	require.NoError(t, client.UploadFile("/outbox/ppd.ach", io.NopCloser(strings.NewReader("ppd"))))
+	require.NoError(t, client.UploadFile("/outbox/archive/three.txt", io.NopCloser(strings.NewReader("three"))))
+
+	files, err := client.ListFiles("/outbox")
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"/outbox/ppd.ach", "/outbox/archive"}, files)
 }

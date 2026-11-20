@@ -2,6 +2,18 @@
 // Use of this source code is governed by an Apache License
 // license that can be found in the LICENSE file.
 
+// Package go_sftp provides an SFTP client for uploading, listing, and opening
+// files on a remote server.
+//
+// The package name is go_sftp, so import it with an alias:
+//
+//	import gosftp "github.com/moov-io/go-sftp"
+//
+// NewClient accepts a moov-io/base logger (a nil logger is allowed) and a
+// ClientConfig. If the initial connection fails, NewClient still returns a
+// non-nil Client along with the error so later calls can retry. Set at least
+// one of HostPublicKey or HostPublicKeys; leaving both empty disables host-key
+// verification.
 package go_sftp
 
 import (
@@ -59,6 +71,19 @@ type client struct {
 	client *sftp.Client
 }
 
+// NewClient returns an SFTP client for cfg.
+//
+// If the first connection attempt fails, NewClient still returns a non-nil
+// Client along with the error so later calls can retry. If cfg is nil, the
+// Client is nil.
+//
+// MaxConnections must be >= 1. Zero or negative values make NewClient return
+// a non-nil Client and an error wrapping pkg/sftp's
+// "n must be greater or equal to 1" after a successful SSH connection.
+// The caller's ClientConfig is not mutated. A nil logger is allowed; pass a
+// logger if you want connection and host-key warnings recorded through
+// moov-io/base. When host-key checking is skipped, the warning is logged only
+// if logger is non-nil.
 func NewClient(logger log.Logger, cfg *ClientConfig) (Client, error) {
 	if cfg == nil {
 		return nil, errors.New("nil SFTP config")
@@ -163,6 +188,8 @@ func (c *client) clearConnectionOnError(err error) error {
 	return err
 }
 
+// hostKeyCallback logs a one-time warning when host-key checking is skipped.
+// If logger is nil, the warning is not printed; there is no stderr fallback.
 var (
 	hostKeyCallbackOnce sync.Once
 	hostKeyCallback     = func(logger log.Logger) {
@@ -318,6 +345,7 @@ func (c *client) Close() error {
 	return nil
 }
 
+// Delete removes path. If the file does not exist, Delete returns nil.
 func (c *client) Delete(path string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -437,7 +465,18 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 // so if dir is an absolute path the returned paths will be.
 //
 // Paths are matched in case-insensitive comparisons, but results are returned exactly as they
-// appear on the server.
+// appear on the server. On a case-sensitive server, listing one directory can therefore
+// include files from other directories that differ only by case.
+//
+// Named relative directories are resolved by walking from Getwd with a glob of the form
+// "[/?]<dir>/*". That generally lists nothing when Getwd is not "/". Absolute directories
+// outside Getwd also return an empty list and no error; absolute directories under Getwd
+// work. ListFiles("/") lists the working directory (Walk of ".", pattern "*") and prefixes
+// results with "/"; it does not list the real filesystem root on a non-chroot server.
+// Symlinked directories are not followed (Walk uses Lstat).
+//
+// ListFiles walks the entire tree under Getwd, so cost grows with the whole tree, and one
+// unreadable directory anywhere under Getwd makes every ListFiles call fail.
 func (c *client) ListFiles(dir string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

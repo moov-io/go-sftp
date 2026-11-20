@@ -29,7 +29,8 @@ endif
 
 # Extra utilities not needed for building
 
-test: update
+.PHONY: test
+test:
 	go test -cover github.com/moov-io/go-sftp/...
 
 .PHONY: clean
@@ -42,6 +43,22 @@ endif
 
 setup:
 	docker compose up -d --force-recreate --remove-orphans
+	$(MAKE) wait-sftp
+
+.PHONY: wait-sftp
+wait-sftp:
+	@echo "waiting for sftp on :2222"
+	@i=0; \
+	while [ $$i -lt 45 ]; do \
+		nc -z 127.0.0.1 2222 >/dev/null 2>&1 && echo "sftp is up" && exit 0; \
+		i=$$((i+1)); sleep 1; \
+	done; \
+	echo "sftp did not become ready"; docker compose ps; docker compose logs; exit 1
+
+.PHONY: test-sftp
+test-sftp:
+	go test -race -count=1 -timeout 15m ./...
+
 teardown:
 	docker compose down --remove-orphans
 
