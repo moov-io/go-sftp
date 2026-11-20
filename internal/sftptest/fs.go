@@ -6,6 +6,7 @@ package sftptest
 
 import (
 	"io"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -105,6 +106,9 @@ func (h *osRoot) Filecmd(r *sftp.Request) error {
 			}
 		}
 		if flags.Size {
+			if attrs.Size > uint64(math.MaxInt64) {
+				return os.ErrInvalid
+			}
 			if err := os.Truncate(local, int64(attrs.Size)); err != nil {
 				return err
 			}
@@ -182,6 +186,18 @@ func (h *osRoot) Filelist(r *sftp.Request) (sftp.ListerAt, error) {
 	}
 }
 
+func (h *osRoot) Lstat(r *sftp.Request) (sftp.ListerAt, error) {
+	local, err := h.translate(r.Filepath)
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Lstat(local)
+	if err != nil {
+		return nil, err
+	}
+	return listerat{info}, nil
+}
+
 func (h *osRoot) RealPath(p string) (string, error) {
 	if p == "" || p == "." {
 		return "/", nil
@@ -209,4 +225,5 @@ func (f listerat) ListAt(ls []os.FileInfo, offset int64) (int, error) {
 var (
 	_ sftp.OpenFileWriter     = (*osRoot)(nil)
 	_ sftp.RealPathFileLister = (*osRoot)(nil)
+	_ sftp.LstatFileLister    = (*osRoot)(nil)
 )

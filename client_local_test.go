@@ -168,6 +168,11 @@ func TestClientLocal_CaseInsensitiveList(t *testing.T) {
 		require.Equal(t, "three.txt", path.Base(files[0]))
 		require.True(t, strings.EqualFold(files[0], filepath.ToSlash(filepath.Join(root, "outbox", "archive", "three.txt"))))
 
+		if runtime.GOOS == "windows" {
+			// pkg/sftp NewServer joins Getwd onto a drive-absolute Open path.
+			return
+		}
+
 		file, err := client.Open(files[0])
 		require.NoError(t, err)
 		body, err := io.ReadAll(file.Contents)
