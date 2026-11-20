@@ -538,18 +538,11 @@ func TestClient(t *testing.T) {
 	t.Run("ListFiles case testing", func(t *testing.T) {
 		files, err := client.ListFiles("/outbox/upper")
 		require.NoError(t, err)
-		require.Len(t, files, 1)
-		require.Equal(t, "names.txt", filepath.Base(files[0]))
-		require.True(t, strings.EqualFold(files[0], "/outbox/Upper/names.txt"))
+		require.ElementsMatch(t, files, []string{"/outbox/Upper/names.txt"})
 
 		files, err = client.ListFiles("outbox/ARCHIVE")
 		require.NoError(t, err)
-		require.Len(t, files, 2)
-		got := make([]string, len(files))
-		for i, f := range files {
-			got[i] = strings.ToLower(f)
-		}
-		require.ElementsMatch(t, got, []string{"outbox/archive/empty2.txt", "outbox/archive/three.txt"})
+		require.ElementsMatch(t, files, []string{"outbox/archive/empty2.txt", "outbox/archive/three.txt"})
 	})
 
 	t.Run("Walk", func(t *testing.T) {
