@@ -1,21 +1,15 @@
-## v0.17.0 (Unreleased)
-
-BREAKING CHANGES
-
-- ListFiles uses ReadDir first. Relative directories work on servers whose working directory is not `/`. After a successful ReadDir, paths use the caller's directory spelling unless the server reports an exact match or a unique case-insensitive directory name.
-- ListFiles("/") on a non-chroot server lists the working directory (with a `/` prefix). It does not list the real filesystem root.
-- ListFiles of a symlinked directory follows the symlink and returns the files inside it. The previous glob walk used Lstat and returned an empty list.
-- MockClient Open Filename is the provided path (not the base name). Delete of a missing file returns nil. Delete honors Err. ListFiles skips directories.
-- MaxConnections defaults to 1 when it is zero or negative.
+## v0.16.4 (Unreleased)
 
 IMPROVEMENTS
 
-- ListFiles falls back to the previous glob walk on any ReadDir error after a live connection, including vendor SSH_FX_FAILURE for a missing directory. A lost connection is still returned as an error.
-- Getwd-join fallback returns connection, Getwd, and walk errors instead of an empty listing.
-- match SFTP listing paths with path.Match so listings stay POSIX on Windows
-- docs: add a quick start and host-key guidance
-- test: local SFTP server covers nested-home layouts, empty dirs, upload-list-delete, case-sibling directories, root listing, symlinks, and MaxConnections 0 in CI
-- test: NewClient covers dial failures, auth and host-key errors, MaxConnections defaults against a live server, public-key auth, and retry after the first connect fails
+- docs: document ListFiles case-insensitive matching, relative-dir Getwd limitation, ListFiles("/"), symlink walk, MaxConnections >= 1, host-key skip, MockClient differences, and Delete of a missing file
+- test: local SFTP server covers layouts, empty dirs, upload-open-delete, and case-sibling characterization of master's case-insensitive union
+- test: NewClient covers dial failures, auth and host-key errors, MaxConnections 0 against a live server, public-key auth, and retry after the first connect fails
+
+BUILD
+
+- ci: SFTP layouts job with `go test -race`
+- makefile: wait-sftp with `nc -z`, drop broken `update` dependency on `test`
 
 ## v0.16.3 (Released 2026-11-18)
 

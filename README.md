@@ -39,6 +39,7 @@ func main() {
         Hostname:       "sftp.example.com:22",
         Username:       "alice",
         Password:       "correct-horse",
+        MaxConnections: 1,
         HostPublicKeys: []string{"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleHostKey"},
     })
     if err != nil {
@@ -47,6 +48,7 @@ func main() {
     }
     defer client.Close()
 
+    // Relative named dirs such as "outbox" only list correctly when Getwd is "/".
     files, err := client.ListFiles("outbox")
     if err != nil {
         panic(err)
@@ -73,7 +75,7 @@ func main() {
 }
 ```
 
-A nil logger is allowed. `MaxConnections` defaults to 1 when it is left at zero.
+A nil logger is allowed. `MaxConnections` must be >= 1. Leaving it at zero (or a negative value) makes `NewClient` return a non-nil Client and an error from pkg/sftp after SSH connects: `sftp: sftp connect: n must be greater or equal to 1`. The caller's `ClientConfig` is not mutated.
 
 ```go
 type Client interface {
@@ -91,15 +93,17 @@ type Client interface {
 }
 ```
 
-`ListFiles` returns the files in `dir` (not subdirectories; use `Walk` for a recursive listing). It calls `ReadDir` first so relative paths work on servers that are not chrooted to `/`. After a successful `ReadDir` (including an empty directory), file names are joined onto the caller's dir. A directory component is rewritten only for an exact server match or a unique case-insensitive match. `ListFiles("/")` lists the working directory when `Getwd` is not `/`. Listing a symlink to a directory follows the symlink. If `ReadDir` fails after a live connection, ListFiles falls back to a case-insensitive glob; a lost connection is returned as an error. A named relative directory is joined with `Getwd` only when that walk is empty and the working directory is not `/`, and those join errors are returned. Returned paths use the same style as `dir` (relative or absolute).
+`ListFiles` returns the files in `dir` (not subdirectories; use `Walk` for a recursive listing). Matching is case-insensitive, and results keep the server's spelling. On a case-sensitive server that has sibling directories differing only by case (for example `Inbound` and `inbound`), a listing of either directory can include files from all of them.
 
-`Delete` is idempotent: it returns nil if the file does not exist.
+Named relative directories such as `"outbox"` are resolved by walking from `Getwd` with a glob of the form `[/?]<dir>/*`. That only lists correctly when `Getwd` is `/` (typical of chroot servers). On a nested home directory the same call returns an empty list with no error. `ListFiles("/")` lists the working directory (not the real filesystem root) and prefixes results with `/`. Symlinked directories are not followed.
 
-The library also includes a [mock client implementation](https://pkg.go.dev/github.com/moov-io/go-sftp#MockClient) which uses a local filesystem temporary directory for testing. `NewMockClient` requires a `*testing.T` and is intended for tests. The mock matches the real client for relative `ListFiles` paths, `Open`/`Reader` filenames, `ModTime`, and idempotent `Delete`.
+`Delete` returns nil if the file does not exist.
+
+The library also includes a [mock client implementation](https://pkg.go.dev/github.com/moov-io/go-sftp#MockClient) which uses a local filesystem temporary directory for testing. `NewMockClient` requires a `*testing.T` and is intended for tests. The mock differs from the real client in a few ways: `Open`/`Reader` set `Filename` to the base name of the path; `Delete` of a missing file returns an error; `ListFiles` includes directory entries.
 
 ## Security / host keys
 
-If `HostPublicKey` and `HostPublicKeys` are both empty, the client skips host-key verification (`ssh.InsecureIgnoreHostKey`). A warning is logged (or written to standard error if the logger is nil). For any server that moves ACH or other financial files, pin the host key.
+If `HostPublicKey` and `HostPublicKeys` are both empty, the client skips host-key verification (`ssh.InsecureIgnoreHostKey`). A warning is logged when the logger is non-nil. For any server that moves ACH or other financial files, pin the host key.
 
 `HostPublicKeys` accepts one key per slice element, in either of these formats:
 
@@ -112,9 +116,10 @@ ssh-keyscan -t ed25519,rsa sftp.example.com
 
 ```go
 cfg := &gosftp.ClientConfig{
-    Hostname: "sftp.example.com:22",
-    Username: "alice",
-    Password: "correct-horse",
+    Hostname:       "sftp.example.com:22",
+    Username:       "alice",
+    Password:       "correct-horse",
+    MaxConnections: 1,
     HostPublicKeys: []string{
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleHostKey",
     },
