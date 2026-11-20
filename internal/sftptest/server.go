@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -45,7 +46,13 @@ type serveOpts struct {
 func Start(t testing.TB, root string) *Server {
 	t.Helper()
 
-	h := &osRoot{root: root}
+	fs, err := os.OpenRoot(root)
+	if err != nil {
+		t.Fatalf("open root: %v", err)
+	}
+	t.Cleanup(func() { _ = fs.Close() })
+
+	h := &osRoot{root: fs}
 	srv := serve(t, serveOpts{
 		handlers: sftp.Handlers{
 			FileGet:  h,

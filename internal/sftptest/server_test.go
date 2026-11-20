@@ -85,24 +85,24 @@ func TestStart_RejectsTraversal(t *testing.T) {
 	require.NoError(t, fd.Close())
 }
 
-func TestTranslate_RejectsEscape(t *testing.T) {
+func TestOsRoot_RejectsEscape(t *testing.T) {
 	root := t.TempDir()
-	h := &osRoot{root: root}
+	require.NoError(t, os.WriteFile(filepath.Join(root, "inside.txt"), []byte("in"), 0o644))
+	fs, err := os.OpenRoot(root)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = fs.Close() })
+	h := &osRoot{root: fs}
 
-	got, err := h.translate("/inside.txt")
+	fd, err := h.root.Open(relName("/inside.txt"))
 	require.NoError(t, err)
-	want, err := filepath.Abs(filepath.Join(root, "inside.txt"))
-	require.NoError(t, err)
-	require.Equal(t, want, got)
+	require.NoError(t, fd.Close())
 
 	if runtime.GOOS != "windows" {
-		t.Skip("filepath.Join only resets on a drive-absolute rel on Windows")
+		_, err = h.root.Open("..")
+		require.Error(t, err)
+		return
 	}
-	escaped := "/D:/windows-sftp-ci-escape.txt"
-	if strings.EqualFold(filepath.VolumeName(root), "D:") {
-		escaped = "/E:/windows-sftp-ci-escape.txt"
-	}
-	_, err = h.translate(escaped)
+	_, err = h.root.Open(relName("/C:/Windows/win.ini"))
 	require.Error(t, err)
 }
 
@@ -114,7 +114,11 @@ func TestStartWorkDir_Getwd(t *testing.T) {
 
 	wd, err := client.Getwd()
 	require.NoError(t, err)
-	require.Equal(t, filepath.Clean(root), filepath.Clean(filepath.FromSlash(wd)))
+	want := filepath.ToSlash(filepath.Clean(root))
+	if runtime.GOOS == "windows" {
+		want = "/" + want
+	}
+	require.Equal(t, want, filepath.ToSlash(wd))
 }
 
 func TestStart_LstatDoesNotFollowSymlinkDir(t *testing.T) {

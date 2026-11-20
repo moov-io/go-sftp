@@ -15,39 +15,18 @@ import (
 	"github.com/pkg/sftp"
 )
 
-// osRoot maps POSIX SFTP paths onto a directory on the host filesystem.
+// osRoot maps POSIX SFTP paths onto a directory using os.Root.
 type osRoot struct {
-	root string
+	root *os.Root
 }
 
-func (h *osRoot) translate(p string) (string, error) {
+func relName(p string) string {
 	p = path.Clean("/" + strings.TrimPrefix(p, "/"))
 	rel := strings.TrimPrefix(p, "/")
-
-	absRoot, err := filepath.Abs(h.root)
-	if err != nil {
-		return "", err
-	}
-
-	var local string
 	if rel == "" || rel == "." {
-		local = absRoot
-	} else {
-		local = filepath.Join(absRoot, filepath.FromSlash(rel))
+		return "."
 	}
-
-	absLocal, err := filepath.Abs(local)
-	if err != nil {
-		return "", err
-	}
-	relToRoot, err := filepath.Rel(absRoot, absLocal)
-	if err != nil {
-		return "", err
-	}
-	if relToRoot == ".." || strings.HasPrefix(relToRoot, ".."+string(os.PathSeparator)) {
-		return "", os.ErrPermission
-	}
-	return absLocal, nil
+	return filepath.FromSlash(rel)
 }
 
 func (h *osRoot) Fileread(r *sftp.Request) (io.ReaderAt, error) {
@@ -59,11 +38,7 @@ func (h *osRoot) Filewrite(r *sftp.Request) (io.WriterAt, error) {
 }
 
 func (h *osRoot) OpenFile(r *sftp.Request) (sftp.WriterAtReaderAt, error) {
-	local, err := h.translate(r.Filepath)
-	if err != nil {
-		return nil, err
-	}
-	return os.OpenFile(local, openFlags(r.Pflags()), 0o644)
+	return h.root.OpenFile(relName(r.Filepath), openFlags(r.Pflags()), 0o644)
 }
 
 func openFlags(p sftp.FileOpenFlags) int {
@@ -91,17 +66,14 @@ func openFlags(p sftp.FileOpenFlags) int {
 func (h *osRoot) Filecmd(r *sftp.Request) error {
 	switch r.Method {
 	case "Setstat":
-		local, err := h.translate(r.Filepath)
-		if err != nil {
-			return err
-		}
+		name := relName(r.Filepath)
 		attrs := r.Attributes()
 		if attrs == nil {
 			return os.ErrInvalid
 		}
 		flags := r.AttrFlags()
 		if flags.Permissions {
-			if err := os.Chmod(local, attrs.FileMode()); err != nil {
+			if err := h.root.Chmod(name, attrs.FileMode()); err != nil {
 				return err
 			}
 		}
@@ -109,60 +81,49 @@ func (h *osRoot) Filecmd(r *sftp.Request) error {
 			if attrs.Size > uint64(math.MaxInt64) {
 				return os.ErrInvalid
 			}
-			if err := os.Truncate(local, int64(attrs.Size)); err != nil {
+			fd, err := h.root.OpenFile(name, os.O_WRONLY, 0)
+			if err != nil {
 				return err
 			}
+			err = fd.Truncate(int64(attrs.Size))
+			if closeErr := fd.Close(); err == nil {
+				err = closeErr
+			}
+			return err
 		}
 		return nil
 	case "Rename", "PosixRename":
-		src, err := h.translate(r.Filepath)
-		if err != nil {
-			return err
-		}
-		dst, err := h.translate(r.Target)
-		if err != nil {
-			return err
-		}
-		return os.Rename(src, dst)
+		return h.root.Rename(relName(r.Filepath), relName(r.Target))
 	case "Rmdir":
-		local, err := h.translate(r.Filepath)
-		if err != nil {
-			return err
-		}
-		return os.Remove(local)
+		return h.root.Remove(relName(r.Filepath))
 	case "Remove":
-		local, err := h.translate(r.Filepath)
-		if err != nil {
-			return err
-		}
-		info, err := os.Lstat(local)
+		name := relName(r.Filepath)
+		info, err := h.root.Lstat(name)
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
 			return os.ErrInvalid
 		}
-		return os.Remove(local)
+		return h.root.Remove(name)
 	case "Mkdir":
-		local, err := h.translate(r.Filepath)
-		if err != nil {
-			return err
-		}
-		return os.Mkdir(local, 0o755)
+		return h.root.Mkdir(relName(r.Filepath), 0o755)
 	default:
 		return os.ErrInvalid
 	}
 }
 
 func (h *osRoot) Filelist(r *sftp.Request) (sftp.ListerAt, error) {
-	local, err := h.translate(r.Filepath)
-	if err != nil {
-		return nil, err
-	}
+	name := relName(r.Filepath)
 
 	switch r.Method {
 	case "List":
-		entries, err := os.ReadDir(local)
+		fd, err := h.root.Open(name)
+		if err != nil {
+			return nil, err
+		}
+		defer fd.Close()
+		entries, err := fd.ReadDir(-1)
 		if err != nil {
 			return nil, err
 		}
@@ -176,7 +137,7 @@ func (h *osRoot) Filelist(r *sftp.Request) (sftp.ListerAt, error) {
 		}
 		return listerat(infos), nil
 	case "Stat":
-		info, err := os.Stat(local)
+		info, err := h.root.Stat(name)
 		if err != nil {
 			return nil, err
 		}
@@ -187,11 +148,7 @@ func (h *osRoot) Filelist(r *sftp.Request) (sftp.ListerAt, error) {
 }
 
 func (h *osRoot) Lstat(r *sftp.Request) (sftp.ListerAt, error) {
-	local, err := h.translate(r.Filepath)
-	if err != nil {
-		return nil, err
-	}
-	info, err := os.Lstat(local)
+	info, err := h.root.Lstat(relName(r.Filepath))
 	if err != nil {
 		return nil, err
 	}
