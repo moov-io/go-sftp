@@ -95,11 +95,13 @@ type Client interface {
 
 `ListFiles` returns the files in `dir` (not subdirectories; use `Walk` for a recursive listing). Matching is case-insensitive, and results keep the server's spelling. On a case-sensitive server that has sibling directories differing only by case (for example `Inbound` and `inbound`), a listing of either directory can include files from all of them.
 
-Named relative directories such as `"outbox"` are resolved by walking from `Getwd` with a glob of the form `[/?]<dir>/*`. That only lists correctly when `Getwd` is `/` (typical of chroot servers). On a nested home directory the same call returns an empty list with no error. `ListFiles("/")` lists the working directory (not the real filesystem root) and prefixes results with `/`. Symlinked directories are not followed.
+Named relative directories such as `"outbox"` are resolved by walking from `Getwd` with a glob of the form `[/?]<dir>/*`. That only lists correctly when `Getwd` is `/` (typical of chroot servers). On a nested home directory the same call returns an empty list with no error. Absolute directories work only when they are under `Getwd`; an absolute path outside `Getwd` returns an empty list and no error. `ListFiles("/")` lists the working directory (not the real filesystem root) and prefixes results with `/`. Symlinked directories are not followed.
+
+ListFiles walks the entire tree under `Getwd`, so cost grows with the whole tree, and one unreadable directory anywhere under `Getwd` makes every ListFiles call fail (for example `listing ... failed: permission denied`).
 
 `Delete` returns nil if the file does not exist.
 
-The library also includes a [mock client implementation](https://pkg.go.dev/github.com/moov-io/go-sftp#MockClient) which uses a local filesystem temporary directory for testing. `NewMockClient` requires a `*testing.T` and is intended for tests. The mock differs from the real client in a few ways: `Open`/`Reader` set `Filename` to the base name of the path; `Delete` of a missing file returns an error; `ListFiles` includes directory entries.
+The library also includes a [mock client implementation](https://pkg.go.dev/github.com/moov-io/go-sftp#MockClient) which uses a local filesystem temporary directory for testing. `NewMockClient` requires a `*testing.T` and is intended for tests. The mock differs from the real client in a few ways: `Open`/`Reader` set `Filename` to the base name of the path; `Delete` of a missing file returns an error; `ListFiles` includes directory entries, returns paths joined with dir, and creates dir with MkdirAll (errors ignored).
 
 ## Security / host keys
 

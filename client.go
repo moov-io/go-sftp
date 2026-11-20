@@ -465,10 +465,14 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 // include files from other directories that differ only by case.
 //
 // Named relative directories are resolved by walking from Getwd with a glob of the form
-// "[/?]<dir>/*". That listing is empty when Getwd is not "/". ListFiles("/") lists the
-// working directory (Walk of ".", pattern "*") and prefixes results with "/"; it does not
-// list the real filesystem root on a non-chroot server. Symlinked directories are not
-// followed (Walk uses Lstat).
+// "[/?]<dir>/*". That generally lists nothing when Getwd is not "/". Absolute directories
+// outside Getwd also return an empty list and no error; absolute directories under Getwd
+// work. ListFiles("/") lists the working directory (Walk of ".", pattern "*") and prefixes
+// results with "/"; it does not list the real filesystem root on a non-chroot server.
+// Symlinked directories are not followed (Walk uses Lstat).
+//
+// ListFiles walks the entire tree under Getwd, so cost grows with the whole tree, and one
+// unreadable directory anywhere under Getwd makes every ListFiles call fail.
 func (c *client) ListFiles(dir string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

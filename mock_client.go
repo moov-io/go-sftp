@@ -81,8 +81,9 @@ func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
 	return os.WriteFile(filepath.Join(c.root, path), bs, 0600)
 }
 
-// ListFiles returns names from os.ReadDir, including directories. MkdirAll
-// errors are ignored.
+// ListFiles returns paths joined with dir (filepath.Join(dir, name)), including
+// directories. As a side effect it creates dir with MkdirAll and ignores
+// MkdirAll errors.
 func (c *MockClient) ListFiles(dir string) ([]string, error) {
 	if c.Err != nil {
 		return nil, c.Err

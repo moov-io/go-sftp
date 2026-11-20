@@ -307,6 +307,37 @@ func TestClientLocal_CaseSiblingDirs_PinsMasterCaseInsensitiveUnion(t *testing.T
 	}
 }
 
+func TestClientLocal_ListFilesUnreadableDirFailsAllListings(t *testing.T) {
+	// Characterization of master's ListFiles: the glob walk starts at Getwd and
+	// visits the entire tree, so one unreadable directory anywhere under Getwd
+	// makes every ListFiles call fail. Intentionally preserved for compatibility.
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores mode 000")
+	}
+
+	root := t.TempDir()
+	writeLocalTree(t, root, map[string]string{"outbox/ppd.ach": "ppd"})
+	locked := filepath.Join(root, "locked")
+	require.NoError(t, os.Mkdir(locked, 0o000))
+	require.NoError(t, os.Chmod(locked, 0o000))
+	t.Cleanup(func() {
+		_ = os.Chmod(locked, 0o755)
+	})
+
+	client := newLocalClient(t, root, nil)
+
+	absOutbox := filepath.ToSlash(filepath.Join(root, "outbox"))
+	files, err := client.ListFiles(absOutbox)
+	require.Error(t, err, "ListFiles(%q)", absOutbox)
+	require.ErrorContains(t, err, "permission denied")
+	require.Empty(t, files)
+
+	files, err = client.ListFiles(".")
+	require.Error(t, err, "ListFiles(%q)", ".")
+	require.ErrorContains(t, err, "permission denied")
+	require.Empty(t, files)
+}
+
 func TestClientLocal_ListFilesRootAndSymlink(t *testing.T) {
 	// ListFiles("/") lists the working directory and does not follow symlink
 	// directories (Walk uses Lstat). Intentionally preserved for compatibility.
