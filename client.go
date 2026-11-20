@@ -500,11 +500,17 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	}
 
 	conn, err := c.connection()
-	if err = c.clearConnectionOnError(err); err != nil {
+	if err != nil {
+		if cerr := c.clearConnectionOnError(err); cerr != nil {
+			err = cerr
+		}
 		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
 	}
 	wd, err := conn.Getwd()
-	if err = c.clearConnectionOnError(err); err != nil {
+	if err != nil {
+		if cerr := c.clearConnectionOnError(err); cerr != nil {
+			err = cerr
+		}
 		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
 	}
 	if !workingDirectoryRequiresJoin(wd) {
