@@ -8,7 +8,7 @@ Stability is the hallmark of any good software. If you find an edge case that is
 
 Have a use case that we don't handle; or handle well! Start the discussion on our Google Group or open a GitHub Issue. We want to make the project meet the needs of the community and keeps you using our code.
 
-Please review our [Code of Conduct](https://github.com/moov-io/ach/blob/master/CODE_OF_CONDUCT.md) to ensure you agree with the values of this project.
+Please review our [Code of Conduct](https://github.com/moov-io/moov-slack-code-of-conduct) to ensure you agree with the values of this project.
 
 We use GitHub to manage reviews of pull requests.
 
@@ -16,7 +16,7 @@ We use GitHub to manage reviews of pull requests.
 
 * If you plan to do something more involved, first propose your ideas in a GitHub issue. This will avoid unnecessary work and surely give you and us a good deal of inspiration.
 
-* Relevant coding style guidelines are the [Go Code Review Comments](https://code.google.com/p/go-wiki/wiki/CodeReviewComments) and the _Formatting and style_ section of Peter Bourgon's [Go: Best Practices for Production Environments](http://peter.bourgon.org/go-in-production/#formatting-and-style).
+* Relevant coding style guidelines are the [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments) and the _Formatting and style_ section of Peter Bourgon's [Go: Best Practices for Production Environments](https://peter.bourgon.org/go-in-production/#formatting-and-style).
 
 * When in doubt follow the [Go Proverbs](https://go-proverbs.github.io/)
 
@@ -26,25 +26,21 @@ We use GitHub to manage reviews of pull requests.
 
 Before starting please make sure you have Go setup and can build our projects from source.
 
-This project uses [Go Modules](https://go.dev/blog/using-go-modules) and Go v1.18 or newer. See [Golang's install instructions](https://golang.org/doc/install) for help setting up Go. You can download the source code and we offer [tagged and released versions](https://github.com/moov-io/go-sftp/releases/latest) as well. We highly recommend you use a tagged release for production.
+This project uses [Go Modules](https://go.dev/blog/using-go-modules) and Go 1.26 or newer. See [Golang's install instructions](https://golang.org/doc/install) for help setting up Go. You can download the source code and we offer [tagged and released versions](https://github.com/moov-io/go-sftp/releases/latest) as well. We highly recommend you use a tagged release for production.
 
-You can pull a working repository of our code with git:
+You can pull a working repository of our code with git (Go modules do not require a GOPATH checkout):
 
 ```
-$ midir -p $GOPATH/src/github.com/moov-io/
-$ cd $GOPATH/src/github.com/moov-io/
 $ git clone git@github.com:moov-io/go-sftp.git
+$ cd go-sftp
 ```
 
-We recommend using additional git remote's for pushing/pulling code. This allows you to use the same repository for submitting patches as tracking our code.
+We recommend using additional git remotes for pushing/pulling code. This allows you to use the same repository for submitting patches as tracking our code.
 
-First, [Fork our project](https://github.com/moov-io/go-sftp) somewhere and after that's done add the remote:
+First, [Fork our project](https://github.com/moov-io/go-sftp) and add the remote:
 
 ```
-$ cd $GOPATH/src/github.com/moov-io/go-sftp # Whereever this project's source code is
-
-$ git remote add $user git@github.com:$user/go-sftp.git # After
-
+$ git remote add $user git@github.com:$user/go-sftp.git
 $ git fetch $user
 ```
 

@@ -43,6 +43,8 @@ func (c *MockClient) Reader(path string) (*File, error) {
 	return c.Open(path)
 }
 
+// Open opens path under the mock root. Filename is the base name of path, not
+// the full path. ModTime is left as the zero time.
 func (c *MockClient) Open(path string) (*File, error) {
 	if c.Err != nil {
 		return nil, c.Err
@@ -58,6 +60,8 @@ func (c *MockClient) Open(path string) (*File, error) {
 	}, nil
 }
 
+// Delete removes path. A missing file returns an error from os.Remove. Delete
+// does not check Err and does not treat a missing file as success.
 func (c *MockClient) Delete(path string) error {
 	return os.Remove(filepath.Join(c.root, path))
 }
@@ -77,6 +81,9 @@ func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
 	return os.WriteFile(filepath.Join(c.root, path), bs, 0600)
 }
 
+// ListFiles returns paths joined with dir (filepath.Join(dir, name)), including
+// directories. As a side effect it creates dir with MkdirAll and ignores
+// MkdirAll errors.
 func (c *MockClient) ListFiles(dir string) ([]string, error) {
 	if c.Err != nil {
 		return nil, c.Err

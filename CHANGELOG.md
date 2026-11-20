@@ -1,3 +1,16 @@
+## v0.16.4 (Unreleased)
+
+IMPROVEMENTS
+
+- docs: document ListFiles case-insensitive matching, relative-dir Getwd limitation, absolute dirs outside Getwd, full-tree walk and unreadable-dir failures, ListFiles("/"), symlink walk, MaxConnections >= 1, host-key skip, MockClient differences, and Delete of a missing file
+- test: local SFTP server covers layouts, empty dirs, upload-open-delete, case-sibling characterization of master's case-insensitive union, and permission-denied listings
+- test: NewClient covers dial failures, auth and host-key errors, MaxConnections 0 against a live server, public-key auth, and retry after the first connect fails
+
+BUILD
+
+- ci: SFTP layouts job with `go test -race`
+- makefile: wait-sftp with `nc -z`, drop broken `update` dependency on `test`
+
 ## v0.16.3 (Released 2026-11-18)
 
 IMPROVEMENTS
@@ -12,6 +25,27 @@ BUILD
 - fix(deps): update module github.com/protonmail/go-crypto to v1.5.2
 - fix(deps): update module github.com/stretchr/testify to v1.12.0
 - chore(deps): update go toolchain directive to v1.27.4
+
+## v0.16.2 (Released 2026-08-07)
+
+BUILD
+
+- chore(deps): bump github.com/moov-io/base to v0.62.1 (#324)
+- fix(deps): update module github.com/pkg/sftp to v1.13.11 (#321)
+- fix(deps): update module golang.org/x/crypto to v0.54.0 (#320)
+- chore(deps): update go toolchain and dependencies
+
+## v0.16.1 (Released 2025-09-17)
+
+IMPROVEMENTS
+
+- fix: nil check file descriptors after conn.Open
+- chore: enable nilaway
+
+BUILD
+
+- fix(deps): update module github.com/moov-io/base to v0.57.1 (#283)
+- fix(deps): update module golang.org/x/crypto to v0.42.0 (#282)
 
 ## v0.16.0 (Released 2025-03-28)
 
