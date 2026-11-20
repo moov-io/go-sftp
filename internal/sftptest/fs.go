@@ -95,6 +95,9 @@ func (h *osRoot) Filecmd(r *sftp.Request) error {
 			return err
 		}
 		attrs := r.Attributes()
+		if attrs == nil {
+			return os.ErrInvalid
+		}
 		flags := r.AttrFlags()
 		if flags.Permissions {
 			if err := os.Chmod(local, attrs.FileMode()); err != nil {

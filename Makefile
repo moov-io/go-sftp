@@ -20,7 +20,7 @@ all: check
 .PHONY: check
 check:
 ifeq ($(OS),Windows_NT)
-	go test -count=1 -coverprofile=coverage.txt -covermode=atomic ./...
+	go test -count=1 -coverprofile coverage.txt -covermode=atomic ./...
 else
 	@wget -O lint-project.sh https://raw.githubusercontent.com/moov-io/infra/master/go/lint-project.sh
 	@chmod +x ./lint-project.sh

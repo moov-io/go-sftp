@@ -39,6 +39,7 @@ jobs:
 
     - name: Test
       if: runner.os == 'Windows'
+      shell: bash
       run: go test -count=1 -coverprofile=coverage.txt -covermode=atomic ./...
 
     - name: Teardown
