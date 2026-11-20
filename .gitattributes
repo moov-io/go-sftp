@@ -1,0 +1,3 @@
+# Keep fixture line endings as LF on Windows checkouts.
+testdata/** text eol=lf
+

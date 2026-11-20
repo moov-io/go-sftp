@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	posixpath "path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -43,23 +44,31 @@ func (c *MockClient) Reader(path string) (*File, error) {
 	return c.Open(path)
 }
 
+func (c *MockClient) local(p string) string {
+	p = posixpath.Clean("/" + strings.TrimPrefix(filepath.ToSlash(p), "/"))
+	rel := strings.TrimPrefix(p, "/")
+	if rel == "" || rel == "." {
+		return c.root
+	}
+	return filepath.Join(c.root, filepath.FromSlash(rel))
+}
+
 func (c *MockClient) Open(path string) (*File, error) {
 	if c.Err != nil {
 		return nil, c.Err
 	}
-	file, err := os.Open(filepath.Join(c.root, path))
+	file, err := os.Open(c.local(path))
 	if err != nil {
 		return nil, err
 	}
-	_, name := filepath.Split(path)
 	return &File{
-		Filename: name,
+		Filename: posixpath.Base(filepath.ToSlash(path)),
 		Contents: file,
 	}, nil
 }
 
 func (c *MockClient) Delete(path string) error {
-	return os.Remove(filepath.Join(c.root, path))
+	return os.Remove(c.local(path))
 }
 
 func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
@@ -67,14 +76,16 @@ func (c *MockClient) UploadFile(path string, contents io.ReadCloser) error {
 		return c.Err
 	}
 
-	dir, _ := filepath.Split(path)
-	if err := os.MkdirAll(filepath.Join(c.root, dir), 0777); err != nil {
-		return err
+	dir := posixpath.Dir(filepath.ToSlash(path))
+	if dir != "." && dir != "/" {
+		if err := os.MkdirAll(c.local(dir), 0777); err != nil {
+			return err
+		}
 	}
 
 	bs, _ := io.ReadAll(contents)
 
-	return os.WriteFile(filepath.Join(c.root, path), bs, 0600)
+	return os.WriteFile(c.local(path), bs, 0600)
 }
 
 func (c *MockClient) ListFiles(dir string) ([]string, error) {
@@ -82,16 +93,15 @@ func (c *MockClient) ListFiles(dir string) ([]string, error) {
 		return nil, c.Err
 	}
 
-	os.MkdirAll(filepath.Join(c.root, dir), 0777)
+	os.MkdirAll(c.local(dir), 0777)
 
-	fds, err := os.ReadDir(filepath.Join(c.root, dir))
+	fds, err := os.ReadDir(c.local(dir))
 	if err != nil {
 		return nil, err
 	}
 	var out []string
 	for i := range fds {
-		fd := filepath.Join(dir, strings.TrimPrefix(fds[i].Name(), c.root))
-		out = append(out, fd)
+		out = append(out, posixpath.Join(filepath.ToSlash(dir), fds[i].Name()))
 	}
 	return out, nil
 }
@@ -101,7 +111,7 @@ func (c *MockClient) Walk(dir string, fn fs.WalkDirFunc) error {
 		return c.Err
 	}
 
-	d, err := filepath.Abs(filepath.Join(c.root, dir))
+	d, err := filepath.Abs(c.local(dir))
 	if err != nil {
 		return err
 	}

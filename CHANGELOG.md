@@ -1,3 +1,11 @@
+## Unreleased
+
+IMPROVEMENTS
+
+- fix: match remote SFTP paths with POSIX `/` so ListFiles and uploads work from Windows clients
+- test: run a real in-process SFTP server so the suite passes on Windows without Docker
+- test: cover case-insensitive Windows filesystems and case-sensitive servers
+
 ## v0.16.3 (Released 2026-11-18)
 
 IMPROVEMENTS

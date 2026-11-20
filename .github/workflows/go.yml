@@ -14,8 +14,9 @@ jobs:
     name: Go Build
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest]
     steps:
     - name: Set up Go 1.x
       uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
@@ -29,11 +30,17 @@ jobs:
         persist-credentials: false
 
     - name: Setup
+      if: runner.os != 'Windows'
       run: make setup
 
     - name: Check
+      if: runner.os != 'Windows'
       run: make check
 
+    - name: Test
+      if: runner.os == 'Windows'
+      run: go test -count=1 -coverprofile=coverage.txt -covermode=atomic ./...
+
     - name: Teardown
-      if: ${{ always() }}
+      if: ${{ always() && runner.os != 'Windows' }}
       run: make teardown

@@ -12,8 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
-	"path/filepath"
+	posixpath "path"
 	"strings"
 	"sync"
 	"time"
@@ -366,21 +365,26 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 		return err
 	}
 
-	// Create the directory if it doesn't exist
+	// Create the directory if it doesn't exist. Remote paths always use '/'.
 	if !c.cfg.SkipDirectoryCreation {
-		dir, _ := filepath.Split(path)
+		dir := posixpath.Dir(path)
+		if dir == "." {
+			dir = ""
+		}
 
-		info, err := conn.Stat(dir)
-		err = c.clearConnectionOnError(err)
-		if info == nil || err != nil {
-			if os.IsNotExist(err) || strings.Contains(err.Error(), "file does not exist") {
-				err := conn.MkdirAll(dir)
-				err = c.clearConnectionOnError(err)
-				if err != nil {
-					return fmt.Errorf("sftp: problem creating %s as parent dir: %w", dir, err)
+		if dir != "" {
+			info, err := conn.Stat(dir)
+			err = c.clearConnectionOnError(err)
+			if info == nil || err != nil {
+				if os.IsNotExist(err) || strings.Contains(err.Error(), "file does not exist") {
+					err := conn.MkdirAll(dir)
+					err = c.clearConnectionOnError(err)
+					if err != nil {
+						return fmt.Errorf("sftp: problem creating %s as parent dir: %w", dir, err)
+					}
+				} else {
+					return fmt.Errorf("problem checking if %s exists: %w", dir, err)
 				}
-			} else {
-				return fmt.Errorf("problem checking if %s exists: %w", dir, err)
 			}
 		}
 	}
@@ -438,7 +442,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	pattern := filepath.Clean(strings.TrimPrefix(dir, string(os.PathSeparator)))
+	pattern := posixpath.Clean(strings.TrimPrefix(dir, "/"))
 
 	conn, err := c.connection()
 	if err = c.clearConnectionOnError(err); err != nil {
@@ -453,7 +457,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		if dir == "" {
 			pattern = "*"
 		} else {
-			pattern = filepath.Join(dir, "*")
+			pattern = posixpath.Join(dir, "*")
 		}
 	case pattern != "":
 		pattern = "[/?]" + pattern + "/*"
@@ -464,7 +468,7 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	}
 
 	var filenames []string
-	err = c.walkNoLock(wd, func(path string, d fs.DirEntry, err error) error {
+	err = c.walkNoLock(wd, func(fullPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -473,20 +477,20 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 		}
 
 		// Check if the server's path matches what we're searching for in a case-insensitive comparison.
-		matches, err := filepath.Match(strings.ToLower(pattern), strings.ToLower(path))
+		matches, err := posixpath.Match(strings.ToLower(pattern), strings.ToLower(fullPath))
 		if matches && err == nil {
 			// Return the path with exactly the case on the server.
 			trimmedPattern := strings.TrimPrefix(strings.TrimSuffix(pattern, "*"), "[/?]")
-			idx := strings.Index(strings.ToLower(path), strings.ToLower(trimmedPattern))
+			idx := strings.Index(strings.ToLower(fullPath), strings.ToLower(trimmedPattern))
 			if idx > -1 {
-				path = path[idx:]
-				if strings.HasPrefix(dir, "/") && !strings.HasPrefix(path, "/") {
-					path = "/" + path
+				fullPath = fullPath[idx:]
+				if strings.HasPrefix(dir, "/") && !strings.HasPrefix(fullPath, "/") {
+					fullPath = "/" + fullPath
 				}
-				filenames = append(filenames, path)
+				filenames = append(filenames, fullPath)
 			} else {
-				// Fallback to Go logic of presenting the path
-				filenames = append(filenames, filepath.Join(dir, filepath.Base(path)))
+				// Fallback to POSIX join so Windows clients still return '/' paths.
+				filenames = append(filenames, posixpath.Join(dir, posixpath.Base(fullPath)))
 			}
 		}
 		return err
@@ -616,7 +620,7 @@ func (c *client) walkNoLock(dir string, fn fs.WalkDirFunc) error {
 				// the remaining entries of the directory containing the file.
 				skipped := w.Path()
 				if !info.IsDir() {
-					skipped = path.Dir(skipped)
+					skipped = posixpath.Dir(skipped)
 				}
 				skippedDirs = append(skippedDirs, skipped)
 
