@@ -191,18 +191,6 @@ func TestClientLocal_SkipChmodAfterUpload(t *testing.T) {
 	require.Equal(t, []string{name}, files)
 }
 
-func TestClientLocal_MaxConnectionsDefault(t *testing.T) {
-	root := t.TempDir()
-	writeLocalTree(t, root, map[string]string{"root.txt": "root"})
-	client := newLocalClient(t, root, func(cfg *gosftp.ClientConfig) {
-		cfg.MaxConnections = 0
-	})
-	require.NoError(t, client.Ping())
-	files, err := client.ListFiles(".")
-	require.NoError(t, err)
-	require.Equal(t, []string{"root.txt"}, files)
-}
-
 func TestClientLocal_ReconnectAfterClose(t *testing.T) {
 	root := t.TempDir()
 	writeLocalTree(t, root, map[string]string{"outbox/ppd.ach": "ppd"})

@@ -9,6 +9,7 @@ IMPROVEMENTS
 - fix: align MockClient Open Filename, ModTime, missing Delete, and ListFiles (skip directories) with the real client
 - docs: add a quick start and host-key guidance
 - test: local SFTP server covers nested-home layouts, empty dirs, upload-list-delete, and MaxConnections 0 in CI
+- test: NewClient covers dial failures, auth and host-key errors, MaxConnections defaults against a live server, public-key auth, and retry after the first connect fails
 
 ## v0.16.3 (Released 2026-11-18)
 

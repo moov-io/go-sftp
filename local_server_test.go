@@ -1,13 +1,16 @@
 package go_sftp_test
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -69,16 +72,63 @@ func TestListFilesRelativeWorkingDirectory(t *testing.T) {
 	require.NoError(t, file.Close())
 }
 
-func startLocalSFTPServer(t *testing.T, workDir string) (addr, hostKey string) {
+func newHostSigner(t *testing.T) ssh.Signer {
 	t.Helper()
-
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	signer, err := ssh.NewSignerFromKey(key)
 	require.NoError(t, err)
+	return signer
+}
+
+func newClientRSAKey(t *testing.T) *rsa.PrivateKey {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	return key
+}
+
+func privateKeyPEM(t *testing.T, key *rsa.PrivateKey, passphrase string) string {
+	t.Helper()
+	var block *pem.Block
+	var err error
+	if passphrase == "" {
+		block, err = ssh.MarshalPrivateKey(key, "")
+	} else {
+		block, err = ssh.MarshalPrivateKeyWithPassphrase(key, "", []byte(passphrase))
+	}
+	require.NoError(t, err)
+	return string(pem.EncodeToMemory(block))
+}
+
+func clientPublicKey(t *testing.T, key *rsa.PrivateKey) ssh.PublicKey {
+	t.Helper()
+	signer, err := ssh.NewSignerFromKey(key)
+	require.NoError(t, err)
+	return signer.PublicKey()
+}
+
+func startLocalSFTPServer(t *testing.T, workDir string) (addr, hostKey string) {
+	t.Helper()
+	return startLocalSFTPServerAuth(t, workDir, nil)
+}
+
+func startLocalSFTPServerAuth(t *testing.T, workDir string, clientPub ssh.PublicKey) (addr, hostKey string) {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	signer := newHostSigner(t)
+	serveLocalSFTP(t, listener, signer, workDir, clientPub)
+	return listener.Addr().String(), string(ssh.MarshalAuthorizedKey(signer.PublicKey()))
+}
+
+func serveLocalSFTP(t *testing.T, listener net.Listener, signer ssh.Signer, workDir string, clientPub ssh.PublicKey) {
+	t.Helper()
+	serveLocalSFTPWhen(t, listener, signer, workDir, clientPub, nil)
+}
+
+func serveLocalSFTPWhen(t *testing.T, listener net.Listener, signer ssh.Signer, workDir string, clientPub ssh.PublicKey, ready *atomic.Bool) {
+	t.Helper()
 
 	config := &ssh.ServerConfig{
 		PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
@@ -87,6 +137,15 @@ func startLocalSFTPServer(t *testing.T, workDir string) (addr, hostKey string) {
 			}
 			return nil, fmt.Errorf("invalid credentials")
 		},
+	}
+	if clientPub != nil {
+		want := clientPub.Marshal()
+		config.PublicKeyCallback = func(c ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+			if c.User() == "demo" && bytes.Equal(key.Marshal(), want) {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("unknown public key")
+		}
 	}
 	config.AddHostKey(signer)
 
@@ -98,6 +157,10 @@ func startLocalSFTPServer(t *testing.T, workDir string) (addr, hostKey string) {
 			if err != nil {
 				return
 			}
+			if ready != nil && !ready.Load() {
+				nConn.Close()
+				continue
+			}
 			go handleLocalSFTP(nConn, config, workDir)
 		}
 	}()
@@ -106,8 +169,6 @@ func startLocalSFTPServer(t *testing.T, workDir string) (addr, hostKey string) {
 		listener.Close()
 		<-done
 	})
-
-	return listener.Addr().String(), string(ssh.MarshalAuthorizedKey(signer.PublicKey()))
 }
 
 func handleLocalSFTP(nConn net.Conn, config *ssh.ServerConfig, workDir string) {
