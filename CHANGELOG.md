@@ -1,14 +1,20 @@
-## v0.16.4 (Unreleased)
+## v0.17.0 (Unreleased)
+
+BREAKING CHANGES
+
+- ListFiles uses ReadDir first. Relative directories work on servers whose working directory is not `/`. After a successful ReadDir, paths use the caller's directory spelling unless the server reports an exact match or a unique case-insensitive directory name.
+- ListFiles("/") on a non-chroot server lists the working directory (with a `/` prefix). It does not list the real filesystem root.
+- ListFiles of a symlinked directory follows the symlink and returns the files inside it. The previous glob walk used Lstat and returned an empty list.
+- MockClient Open Filename is the provided path (not the base name). Delete of a missing file returns nil. Delete honors Err. ListFiles skips directories.
+- MaxConnections defaults to 1 when it is zero or negative.
 
 IMPROVEMENTS
 
-- fix: default MaxConnections to 1 when it is zero or negative
-- fix: ListFiles uses ReadDir first so relative dirs work on non-chroot servers without changing a listing that already returns files
-- fix: fall back to case-insensitive glob, then Getwd join, only when ReadDir finds nothing
-- fix: match SFTP listing paths with path.Match so listings stay POSIX on Windows
-- fix: align MockClient Open Filename, ModTime, missing Delete, and ListFiles (skip directories) with the real client
+- ListFiles falls back to the previous glob walk on any ReadDir error after a live connection, including vendor SSH_FX_FAILURE for a missing directory. A lost connection is still returned as an error.
+- Getwd-join fallback returns connection, Getwd, and walk errors instead of an empty listing.
+- match SFTP listing paths with path.Match so listings stay POSIX on Windows
 - docs: add a quick start and host-key guidance
-- test: local SFTP server covers nested-home layouts, empty dirs, upload-list-delete, and MaxConnections 0 in CI
+- test: local SFTP server covers nested-home layouts, empty dirs, upload-list-delete, case-sibling directories, root listing, symlinks, and MaxConnections 0 in CI
 - test: NewClient covers dial failures, auth and host-key errors, MaxConnections defaults against a live server, public-key auth, and retry after the first connect fails
 
 ## v0.16.3 (Released 2026-11-18)

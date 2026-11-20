@@ -91,7 +91,7 @@ type Client interface {
 }
 ```
 
-`ListFiles` returns the files in `dir` (not subdirectories; use `Walk` for a recursive listing). It calls `ReadDir` first so relative paths work on servers that are not chrooted to `/`. A successful `ReadDir` (including an empty directory) is returned unchanged. If the path is missing, ListFiles falls back to a case-insensitive glob, then joins a named relative directory with `Getwd` only when that listing is also empty. Returned paths use the same style as `dir` (relative or absolute).
+`ListFiles` returns the files in `dir` (not subdirectories; use `Walk` for a recursive listing). It calls `ReadDir` first so relative paths work on servers that are not chrooted to `/`. After a successful `ReadDir` (including an empty directory), file names are joined onto the caller's dir. A directory component is rewritten only for an exact server match or a unique case-insensitive match. `ListFiles("/")` lists the working directory when `Getwd` is not `/`. Listing a symlink to a directory follows the symlink. If `ReadDir` fails after a live connection, ListFiles falls back to a case-insensitive glob; a lost connection is returned as an error. A named relative directory is joined with `Getwd` only when that walk is empty and the working directory is not `/`, and those join errors are returned. Returned paths use the same style as `dir` (relative or absolute).
 
 `Delete` is idempotent: it returns nil if the file does not exist.
 
