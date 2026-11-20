@@ -50,7 +50,7 @@ wait-sftp:
 	@echo "waiting for sftp on :2222"
 	@i=0; \
 	while [ $$i -lt 45 ]; do \
-		python3 -c 'import socket; socket.create_connection(("127.0.0.1", 2222), 2).close()' >/dev/null 2>&1 && echo "sftp is up" && exit 0; \
+		nc -z 127.0.0.1 2222 >/dev/null 2>&1 && echo "sftp is up" && exit 0; \
 		i=$$((i+1)); sleep 1; \
 	done; \
 	echo "sftp did not become ready"; docker compose ps; docker compose logs; exit 1
