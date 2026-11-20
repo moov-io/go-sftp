@@ -8,8 +8,8 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 )
@@ -98,16 +98,21 @@ func (c *MockClient) ListFiles(dir string) ([]string, error) {
 		return nil, c.Err
 	}
 
-	os.MkdirAll(filepath.Join(c.root, dir), 0777)
+	local := filepath.Join(c.root, filepath.FromSlash(dir))
+	if err := os.MkdirAll(local, 0777); err != nil {
+		return nil, err
+	}
 
-	fds, err := os.ReadDir(filepath.Join(c.root, dir))
+	fds, err := os.ReadDir(local)
 	if err != nil {
 		return nil, err
 	}
 	var out []string
-	for i := range fds {
-		fd := filepath.Join(dir, strings.TrimPrefix(fds[i].Name(), c.root))
-		out = append(out, fd)
+	for _, fd := range fds {
+		if fd.IsDir() {
+			continue
+		}
+		out = append(out, path.Join(dir, fd.Name()))
 	}
 	return out, nil
 }

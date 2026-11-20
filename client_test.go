@@ -133,6 +133,18 @@ func TestClient(t *testing.T) {
 		files, err = client.ListFiles("outbox/")
 		require.NoError(t, err)
 		require.ElementsMatch(t, files, []string{"outbox/one.txt", "outbox/two.txt", "outbox/empty.txt"})
+
+		files, err = client.ListFiles("onlydir")
+		require.NoError(t, err)
+		require.Empty(t, files)
+
+		files, err = client.ListFiles("/onlydir")
+		require.NoError(t, err)
+		require.Empty(t, files)
+
+		files, err = client.ListFiles("missing-dir")
+		require.NoError(t, err)
+		require.Empty(t, files)
 	})
 
 	t.Run("ListFiles subdir", func(t *testing.T) {
@@ -210,6 +222,7 @@ func TestClient(t *testing.T) {
 		require.ElementsMatch(t, walkedFiles, []string{
 			".", "root.txt",
 			"bigdata", "bigdata/large.txt",
+			"onlydir", "onlydir/subdir", "onlydir/subdir/nested.txt",
 			"outbox", "outbox/Upper", "outbox/Upper/names.txt",
 			"outbox/one.txt", "outbox/two.txt", "outbox/empty.txt",
 			"outbox/archive", "outbox/archive/empty2.txt", "outbox/archive/three.txt",

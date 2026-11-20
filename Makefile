@@ -43,6 +43,22 @@ endif
 
 setup:
 	docker compose up -d --force-recreate --remove-orphans
+	$(MAKE) wait-sftp
+
+.PHONY: wait-sftp
+wait-sftp:
+	@echo "waiting for sftp on :2222"
+	@i=0; \
+	while [ $$i -lt 45 ]; do \
+		python3 -c 'import socket; socket.create_connection(("127.0.0.1", 2222), 2).close()' >/dev/null 2>&1 && echo "sftp is up" && exit 0; \
+		i=$$((i+1)); sleep 1; \
+	done; \
+	echo "sftp did not become ready"; docker compose ps; docker compose logs; exit 1
+
+.PHONY: test-sftp
+test-sftp:
+	go test -race -count=1 -timeout 15m ./...
+
 teardown:
 	docker compose down --remove-orphans
 

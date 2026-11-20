@@ -3,10 +3,12 @@
 IMPROVEMENTS
 
 - fix: default MaxConnections to 1 when it is zero or negative
-- fix: join named relative ListFiles directories with Getwd when the server is not chrooted to /
+- fix: ListFiles uses ReadDir first so relative dirs work on non-chroot servers without changing a listing that already returns files
+- fix: fall back to case-insensitive glob, then Getwd join, only when ReadDir finds nothing
 - fix: match SFTP listing paths with path.Match so listings stay POSIX on Windows
-- fix: align MockClient Open Filename, ModTime, and missing Delete with the real client
+- fix: align MockClient Open Filename, ModTime, missing Delete, and ListFiles (skip directories) with the real client
 - docs: add a quick start and host-key guidance
+- test: local SFTP server covers nested-home layouts, empty dirs, upload-list-delete, and MaxConnections 0 in CI
 
 ## v0.16.3 (Released 2026-11-18)
 

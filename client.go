@@ -461,10 +461,13 @@ func (c *client) UploadFile(path string, contents io.ReadCloser) error {
 // Use Walk to traverse a tree recursively.
 //
 // Paths are returned in the same style as dir: an absolute dir yields absolute
-// paths, and a relative dir yields relative paths. Named relative directories
-// (for example "outbox") are joined with the SFTP working directory only when
-// that directory is not "/". Listings of ".", "", and absolute paths keep the
-// previous walk/glob path so cwd listings do not change spelling.
+// paths, and a relative dir yields relative paths. ListFiles tries ReadDir
+// first (the server resolves relative paths against its working directory).
+// A successful ReadDir, including an empty directory, is returned as-is so a
+// listing that already works never changes spelling. If ReadDir fails because
+// the path is missing (including case mismatch), ListFiles falls back to a
+// case-insensitive glob walk, then joins a named relative dir with Getwd only
+// when that walk is also empty and the working directory is not "/".
 //
 // Paths are matched in case-insensitive comparisons, but results are returned exactly as they
 // appear on the server.
@@ -472,38 +475,43 @@ func (c *client) ListFiles(dir string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if !listRequiresWorkingDirectoryJoin(dir) {
-		filenames, err := c.listFilesAt(dir)
-		if err != nil {
-			return nil, fmt.Errorf("listing %s failed: %w", dir, err)
-		}
+	filenames, err := c.readDirFiles(dir)
+	if err == nil {
+		return filenames, nil
+	}
+	if !isNotFound(err) && !isNotDir(err) {
+		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
+	}
+
+	filenames, err = c.listFilesAt(dir)
+	if err != nil {
+		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
+	}
+	if len(filenames) > 0 || !listRequiresWorkingDirectoryJoin(dir) {
 		return filenames, nil
 	}
 
 	conn, err := c.connection()
 	if err = c.clearConnectionOnError(err); err != nil {
-		return nil, err
+		return filenames, nil
 	}
-
 	wd, err := conn.Getwd()
 	if err = c.clearConnectionOnError(err); err != nil {
-		return nil, err
+		return filenames, nil
 	}
-
 	if !workingDirectoryRequiresJoin(wd) {
-		filenames, err := c.listFilesAt(dir)
-		if err != nil {
-			return nil, fmt.Errorf("listing %s failed: %w", dir, err)
-		}
 		return filenames, nil
 	}
 
 	searchDir := resolveListDirectory(wd, dir)
-	filenames, err := c.listFilesAt(searchDir)
-	if err != nil {
-		return nil, fmt.Errorf("listing %s failed: %w", dir, err)
+	if searchDir == "" || searchDir == dir {
+		return filenames, nil
 	}
-	return rebaseListResults(filenames, wd, searchDir, dir), nil
+	joined, err := c.listFilesAt(searchDir)
+	if err != nil || len(joined) == 0 {
+		return filenames, nil
+	}
+	return rebaseListResults(joined, wd, searchDir, dir), nil
 }
 
 func listRequiresWorkingDirectoryJoin(dir string) bool {
@@ -520,6 +528,114 @@ func workingDirectoryRequiresJoin(wd string) bool {
 		return false
 	}
 	return true
+}
+
+func (c *client) readDirFiles(dir string) ([]string, error) {
+	conn, err := c.connection()
+	if err = c.clearConnectionOnError(err); err != nil {
+		return nil, err
+	}
+
+	listDir := dir
+	switch dir {
+	case "", ".", "./":
+		listDir = "."
+	}
+
+	infos, err := conn.ReadDir(listDir)
+	if err != nil {
+		return nil, err
+	}
+
+	prefix := dir
+	switch dir {
+	case "", ".", "./", "/":
+	default:
+		prefix = canonicalDir(conn, dir)
+	}
+
+	var filenames []string
+	for _, info := range infos {
+		if info == nil || info.IsDir() {
+			continue
+		}
+		name := info.Name()
+		var out string
+		switch dir {
+		case "", ".", "./":
+			out = name
+		case "/":
+			out = "/" + name
+		default:
+			out = path.Join(prefix, name)
+		}
+		if strings.HasPrefix(dir, "/") && !strings.HasPrefix(out, "/") {
+			out = "/" + out
+		}
+		filenames = append(filenames, out)
+	}
+	return filenames, nil
+}
+
+// canonicalDir rewrites dir using the names the server reports for each
+// component, so a case-insensitive ReadDir of "/outbox/upper" still returns
+// "/outbox/Upper/..." when that is the on-disk spelling.
+func canonicalDir(conn *sftp.Client, dir string) string {
+	leading := strings.HasPrefix(dir, "/")
+	trim := strings.Trim(path.Clean(dir), "/")
+	if trim == "" || trim == "." {
+		return dir
+	}
+	parts := strings.Split(trim, "/")
+	parent := "."
+	if leading {
+		parent = "/"
+	}
+	var rebuilt []string
+	for _, part := range parts {
+		actual := part
+		infos, err := conn.ReadDir(parent)
+		if err == nil {
+			for _, info := range infos {
+				if info != nil && info.IsDir() && strings.EqualFold(info.Name(), part) {
+					actual = info.Name()
+					break
+				}
+			}
+		}
+		rebuilt = append(rebuilt, actual)
+		if parent == "/" {
+			parent = "/" + actual
+		} else if parent == "." {
+			parent = actual
+		} else {
+			parent = path.Join(parent, actual)
+		}
+	}
+	out := path.Join(rebuilt...)
+	if leading && !strings.HasPrefix(out, "/") {
+		out = "/" + out
+	}
+	return out
+}
+
+func isNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	if os.IsNotExist(err) || errors.Is(err, fs.ErrNotExist) || errors.Is(err, sftp.ErrSSHFxNoSuchFile) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "file does not exist") || strings.Contains(msg, "no such file")
+}
+
+func isNotDir(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "not a directory") || strings.Contains(msg, "not a dir")
 }
 
 // resolveListDirectory joins a relative dir with the SFTP working directory

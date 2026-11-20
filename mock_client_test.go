@@ -91,3 +91,13 @@ func TestMockClient_ListAndOpenFiles(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, walkedFiles, "f1.txt", "f2.txt")
 }
+
+func TestMockClient_ListFilesSkipsDirectories(t *testing.T) {
+	client := sftp.NewMockClient(t)
+	require.NoError(t, client.UploadFile("/outbox/ppd.ach", io.NopCloser(strings.NewReader("ppd"))))
+	require.NoError(t, client.UploadFile("/outbox/archive/three.txt", io.NopCloser(strings.NewReader("three"))))
+
+	files, err := client.ListFiles("/outbox")
+	require.NoError(t, err)
+	require.Equal(t, []string{"/outbox/ppd.ach"}, files)
+}
