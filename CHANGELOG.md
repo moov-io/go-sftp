@@ -2,6 +2,9 @@
 
 IMPROVEMENTS
 
+- fix: match remote SFTP paths with POSIX `/` so ListFiles and uploads work from Windows clients
+- test: run a real in-process SFTP server so the suite passes on Windows without Docker
+- test: cover case-insensitive Windows filesystems and case-sensitive servers
 - docs: document ListFiles case-insensitive matching, relative-dir Getwd limitation, absolute dirs outside Getwd, full-tree walk and unreadable-dir failures, ListFiles("/"), symlink walk, MaxConnections >= 1, host-key skip, MockClient differences, and Delete of a missing file
 - test: local SFTP server covers layouts, empty dirs, upload-open-delete, case-sibling characterization of master's case-insensitive union, and permission-denied listings
 - test: NewClient covers dial failures, auth and host-key errors, MaxConnections 0 against a live server, public-key auth, and retry after the first connect fails
@@ -9,6 +12,7 @@ IMPROVEMENTS
 BUILD
 
 - ci: SFTP layouts job with `go test -race`
+- ci: run the test suite on windows-latest
 - makefile: wait-sftp with `nc -z`, drop broken `update` dependency on `test`
 
 ## v0.16.3 (Released 2026-11-18)
