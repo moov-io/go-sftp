@@ -158,13 +158,11 @@ To make a release of go-sftp simply open a pull request with `CHANGELOG.md` upda
 
 ### Testing
 
-Unit tests and examples can be run without Docker:
+Tests start in-process SSH+SFTP servers, so `go test ./...` works on Linux, macOS, and Windows without Docker. One server uses the host filesystem (case-insensitive on Windows); another is in-memory and always case-sensitive.
 
-```
-go test -short ./...
-```
+`go test -short ./...` skips tests that talk to the fixture server and to OpenSSH on `127.0.0.1:2222`.
 
-The integration tests in `client_test.go` and `network_test.go` talk to an SFTP server on `localhost:2222`. Docker and Docker Compose are required for that path:
+`make setup` starts [atmoz/sftp](https://github.com/atmoz/sftp) via Docker Compose. When that container is listening on `127.0.0.1:2222`, the suite also runs against OpenSSH. Linux CI starts it; Windows CI relies on the in-process servers.
 
 ```
 make setup    # starts atmoz/sftp via docker compose

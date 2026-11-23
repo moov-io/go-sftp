@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -167,6 +168,11 @@ func TestClientLocal_CaseInsensitiveList(t *testing.T) {
 		require.Equal(t, "three.txt", path.Base(files[0]))
 		require.True(t, strings.EqualFold(files[0], filepath.ToSlash(filepath.Join(root, "outbox", "archive", "three.txt"))))
 
+		if runtime.GOOS == "windows" {
+			// pkg/sftp NewServer joins Getwd onto a drive-absolute Open path.
+			return
+		}
+
 		file, err := client.Open(files[0])
 		require.NoError(t, err)
 		body, err := io.ReadAll(file.Contents)
@@ -311,6 +317,9 @@ func TestClientLocal_ListFilesUnreadableDirFailsAllListings(t *testing.T) {
 	// Characterization of master's ListFiles: the glob walk starts at Getwd and
 	// visits the entire tree, so one unreadable directory anywhere under Getwd
 	// makes every ListFiles call fail. Intentionally preserved for compatibility.
+	if runtime.GOOS == "windows" {
+		t.Skip("directory mode 000 is not enforced on Windows")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores mode 000")
 	}
@@ -346,7 +355,9 @@ func TestClientLocal_ListFilesRootAndSymlink(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(root, "real", "a.ach"), []byte("a"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "top.txt"), []byte("t"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "afile"), []byte("t"), 0o644))
-	require.NoError(t, os.Symlink(filepath.Join(root, "real"), filepath.Join(root, "linked")))
+	if err := os.Symlink(filepath.Join(root, "real"), filepath.Join(root, "linked")); err != nil {
+		t.Skipf("symlink: %v", err)
+	}
 
 	client := newLocalClient(t, root, nil)
 

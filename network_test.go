@@ -6,9 +6,7 @@ package go_sftp_test
 
 import (
 	"testing"
-	"time"
 
-	"github.com/moov-io/base/log"
 	sftp "github.com/moov-io/go-sftp"
 	"github.com/stretchr/testify/require"
 )
@@ -18,18 +16,16 @@ func TestNetwork(t *testing.T) {
 		t.Skip("-short flag was provided")
 	}
 
-	client, err := sftp.NewClient(log.NewTestLogger(), &sftp.ClientConfig{
-		Hostname:       "localhost:2222",
-		Username:       "demo",
-		Password:       "password",
-		Timeout:        5 * time.Second,
-		MaxConnections: 1,
-		PacketSize:     32000,
+	t.Run("in-process", func(t *testing.T) {
+		runNetworkTests(t, testClient(t))
 	})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, client.Close())
+	t.Run("openssh", func(t *testing.T) {
+		runNetworkTests(t, openSSHClient(t))
 	})
+}
+
+func runNetworkTests(t *testing.T, client sftp.Client) {
+	t.Helper()
 
 	t.Run("Ping", func(t *testing.T) {
 		require.NoError(t, client.Ping())

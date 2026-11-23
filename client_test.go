@@ -379,18 +379,16 @@ func TestClient(t *testing.T) {
 		t.Skip("-short flag was provided")
 	}
 
-	client, err := sftp.NewClient(log.NewTestLogger(), &sftp.ClientConfig{
-		Hostname:       "localhost:2222",
-		Username:       "demo",
-		Password:       "password",
-		Timeout:        5 * time.Second,
-		MaxConnections: 1,
-		PacketSize:     32000,
+	t.Run("in-process", func(t *testing.T) {
+		runClientTests(t, testClient(t))
 	})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, client.Close())
+	t.Run("openssh", func(t *testing.T) {
+		runClientTests(t, openSSHClient(t))
 	})
+}
+
+func runClientTests(t *testing.T, client sftp.Client) {
+	t.Helper()
 
 	t.Run("Ping", func(t *testing.T) {
 		require.NoError(t, client.Ping())
@@ -543,7 +541,7 @@ func TestClient(t *testing.T) {
 
 	t.Run("Walk", func(t *testing.T) {
 		var walkedFiles []string
-		err = client.Walk(".", func(path string, info fs.DirEntry, err error) error {
+		err := client.Walk(".", func(path string, info fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -568,7 +566,7 @@ func TestClient(t *testing.T) {
 
 	t.Run("Walk subdir", func(t *testing.T) {
 		var walkedFiles []string
-		err = client.Walk("/outbox", func(path string, info fs.DirEntry, err error) error {
+		err := client.Walk("/outbox", func(path string, info fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -589,7 +587,7 @@ func TestClient(t *testing.T) {
 
 	t.Run("Walk SkipDir", func(t *testing.T) {
 		var walkedFiles []string
-		err = client.Walk("/outbox", func(path string, info fs.DirEntry, err error) error {
+		err := client.Walk("/outbox", func(path string, info fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -603,7 +601,7 @@ func TestClient(t *testing.T) {
 	t.Run("Upload and Delete", func(t *testing.T) {
 		// upload file
 		fileName := fmt.Sprintf("/upload/%d.txt", time.Now().Unix())
-		err = client.UploadFile(fileName, io.NopCloser(bytes.NewBufferString("random")))
+		err := client.UploadFile(fileName, io.NopCloser(bytes.NewBufferString("random")))
 		require.NoError(t, err)
 
 		// test uploaded file content
@@ -635,7 +633,7 @@ func TestClient(t *testing.T) {
 	t.Run("Skip chmod after upload", func(t *testing.T) {
 		// upload file
 		fileName := fmt.Sprintf("/upload/%d.txt", time.Now().Unix())
-		err = client.UploadFile(fileName, io.NopCloser(bytes.NewBufferString("random")))
+		err := client.UploadFile(fileName, io.NopCloser(bytes.NewBufferString("random")))
 		require.NoError(t, err)
 
 		// test uploaded file content
@@ -656,44 +654,41 @@ func TestClient__UploadFile(t *testing.T) {
 		t.Skip("-short flag was provided")
 	}
 
-	conf := &sftp.ClientConfig{
-		Hostname:       "localhost:2222",
-		Username:       "demo",
-		Password:       "password",
-		Timeout:        5 * time.Second,
-		MaxConnections: 1,
-		PacketSize:     32000,
-	}
+	t.Run("in-process", func(t *testing.T) {
+		srv := startFixtureServer(t)
+		runUploadFileTests(t, defaultClientConfig(srv.Addr, []string{srv.HostPublicKey}))
+	})
+	t.Run("openssh", func(t *testing.T) {
+		requireOpenSSH(t)
+		runUploadFileTests(t, defaultClientConfig("127.0.0.1:2222", nil))
+	})
+}
+
+func runUploadFileTests(t *testing.T, base *sftp.ClientConfig) {
+	t.Helper()
 
 	subdir := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	path := fmt.Sprintf("/upload/deep/nested/%s/file.txt", subdir)
 
 	t.Run("don't create subdir", func(t *testing.T) {
+		conf := *base
 		conf.SkipDirectoryCreation = true
-		client, err := sftp.NewClient(log.NewTestLogger(), conf)
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			require.NoError(t, client.Close())
-		})
+		client := newClientFromConfig(t, &conf)
 
 		contents := io.NopCloser(strings.NewReader("hello"))
-		err = client.UploadFile(path, contents)
+		err := client.UploadFile(path, contents)
 		require.ErrorContains(t, err, fmt.Sprintf("sftp: problem creating remote file %s: file does not exist", path))
 	})
 
 	t.Run("create subdir and upload", func(t *testing.T) {
+		conf := *base
 		conf.SkipDirectoryCreation = false
-		client, err := sftp.NewClient(log.NewTestLogger(), conf)
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			require.NoError(t, client.Close())
-		})
+		client := newClientFromConfig(t, &conf)
 
 		contents := io.NopCloser(strings.NewReader("hello"))
-		err = client.UploadFile(path, contents)
+		err := client.UploadFile(path, contents)
 		require.NoError(t, err)
 
-		// Cleanup
 		require.NoError(t, client.Delete(path))
 	})
 }
