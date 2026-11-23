@@ -1,4 +1,4 @@
-## v0.16.4 (Unreleased)
+## v0.16.4 (Released 2026-11-23)
 
 IMPROVEMENTS
 
